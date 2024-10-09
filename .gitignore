@@ -1,0 +1,35 @@
+# Ignore Visual Studio temporary files, build results, and
+# User-specific files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+# Ignore build results
+bin/
+obj/
+app.publish/
+# Avoid publishing unnecessary files
+.vscode/
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+# Ignore user-specific configuration
+local.settings.json
+# Ignore Azure Functions related build artifacts
+*.log
+*.lock.json
+# Azure Functions artifacts that might be generated during deployment
+publish/
+*.publish.xml
+# Node.js related files (in case your Function App uses Node.js)
+node_modules/
+npm-debug.log
+# For Python Function Apps
+__pycache__/
+*.pyc
+*.pyo
+# Ignore the backup files created by certain IDEs
+*.bak
+# Function App-specific binaries and other artifacts
+*.zip

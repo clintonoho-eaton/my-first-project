@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "EtnTagUtility": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7191"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker",
+      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
+      "httpPort": 30794,
+      "useSSL": false,
+      "CERTIFICATE_PATH":  ""
+    }
+  }
+}

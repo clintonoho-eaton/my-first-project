@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DeviceConnectivityTag", "DeviceConnectivityTag\DeviceConnectivityTag.csproj", "{A0618985-3FAF-47DB-9D48-1F0CF400963B}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IotHubCapcityExporter", "IotHubCapcityExporter\IotHubCapcityExporter.csproj", "{FE3F9B6A-C2F2-4B36-8049-B4EDE38DBB28}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A0618985-3FAF-47DB-9D48-1F0CF400963B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0618985-3FAF-47DB-9D48-1F0CF400963B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0618985-3FAF-47DB-9D48-1F0CF400963B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0618985-3FAF-47DB-9D48-1F0CF400963B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE3F9B6A-C2F2-4B36-8049-B4EDE38DBB28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE3F9B6A-C2F2-4B36-8049-B4EDE38DBB28}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE3F9B6A-C2F2-4B36-8049-B4EDE38DBB28}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE3F9B6A-C2F2-4B36-8049-B4EDE38DBB28}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6E14F3D6-3332-4647-B669-AA26CF34FEE2}
+	EndGlobalSection
+EndGlobal
