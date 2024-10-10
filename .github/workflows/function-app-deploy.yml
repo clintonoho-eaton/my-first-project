@@ -41,12 +41,12 @@ jobs:
 
     - name: Create Storage Account
       run: |
-        az storage account create --name mystorageaccount$RANDOM --location eastus --resource-group myResourceGroup --sku Standard_LRS
+        az storage account create --name mystorageaccount$RANDOM --location eastus --resource-group myResourceGroup --sku Standard_LRS --allow-blob-public-access false
 
     - name: Create Function App with Premium Plan
       run: |
         az functionapp plan create --name myPremiumPlan --resource-group myResourceGroup --location eastus --number-of-workers 1 --sku EP1
-        az functionapp create --name myFunctionApp --storage-account mystorageaccount$RANDOM --plan myPremiumPlan --resource-group myResourceGroup --functions-version 3
+        az functionapp create --name myFunctionApp --storage-account mystorageaccount$RANDOM --plan myPremiumPlan --resource-group myResourceGroup --functions-version 4
 
     - name: Configure Private Endpoint
       run: |
