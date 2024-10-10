@@ -1,0 +1,91 @@
+name: Deploy, Test, and Destroy Azure Function App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-test-destroy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: '3.1.x' # Adjust the version as needed
+
+    - name: Restore dependencies
+      run: dotnet restore IoTHubCapacityExporter/
+
+    - name: Build project
+      run: dotnet build --configuration Release IoTHubCapacityExporter/
+
+    - name: Publish project
+      run: dotnet publish --configuration Release --output ./publish IoTHubCapacityExporter/
+
+    - name: Zip published project
+      run: zip -r functionapp.zip ./publish
+
+    - name: Set up Azure CLI
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Create Resource Group
+      run: |
+        az group create --name myResourceGroup --location eastus
+
+    - name: Create Storage Account
+      run: |
+        az storage account create --name mystorageaccount$RANDOM --location eastus --resource-group myResourceGroup --sku Standard_LRS
+
+    - name: Create Function App with Premium Plan
+      run: |
+        az functionapp plan create --name myPremiumPlan --resource-group myResourceGroup --location eastus --number-of-workers 1 --sku EP1
+        az functionapp create --name myFunctionApp --storage-account mystorageaccount$RANDOM --plan myPremiumPlan --resource-group myResourceGroup --functions-version 3
+
+    - name: Configure Private Endpoint
+      run: |
+        az network vnet create --name myVNet --resource-group myResourceGroup --subnet-name mySubnet
+        az network private-endpoint create --name myPrivateEndpoint --resource-group myResourceGroup --vnet-name myVNet --subnet mySubnet --private-connection-resource-id $(az functionapp show --name myFunctionApp --resource-group myResourceGroup --query id --output tsv) --group-ids sites
+        az network private-dns zone create --resource-group myResourceGroup --name "privatelink.azurewebsites.net"
+        az network private-dns link vnet create --resource-group myResourceGroup --zone-name "privatelink.azurewebsites.net" --name myDNSLink --virtual-network myVNet --registration-enabled false
+        az network private-dns record-set a add-record --resource-group myResourceGroup --zone-name "privatelink.azurewebsites.net" --record-set-name myFunctionApp --ipv4-address $(az network private-endpoint show --name myPrivateEndpoint --resource-group myResourceGroup --query 'customDnsConfigs[0].ipAddresses[0]' --output tsv)
+
+    - name: Deploy Function App
+      run: |
+        az functionapp deployment source config-zip --resource-group myResourceGroup --name myFunctionApp --src functionapp.zip
+
+    - name: Get Access Token
+      id: get_token
+      run: |
+        AZURE_ACCESS_TOKEN=$(az account get-access-token --resource=https://management.azure.com --query accessToken --output tsv)
+        echo "::set-output name=token::$AZURE_ACCESS_TOKEN"
+
+    - name: Trigger Azure Function App
+      uses: actions/github-script@v5
+      env:
+        FUNCTION_APP_NAME: myFunctionApp
+        ACCESS_TOKEN: ${{ steps.get_token.outputs.token }}
+      with:
+        script: |
+          const response = await fetch(`https://${{ env.FUNCTION_APP_NAME }}.azurewebsites.net/api/IoTHubCapacityExporter`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${{ env.ACCESS_TOKEN }}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+    - name: Wait for Function App processing
+      run: sleep 60 # Adjust the sleep time as needed
+
+    - name: Destroy Infrastructure
+      run: |
+        az group delete --name myResourceGroup --yes --no-wait
