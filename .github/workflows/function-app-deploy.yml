@@ -17,7 +17,9 @@ jobs:
         dotnet-version: '3.1.x' # Adjust the version as needed
 
     - name: Restore dependencies
-      run: dotnet restore IotHubCapacityExporter/IotHubCapacityExporter.csproj
+      run: |
+        ls -lart
+        dotnet restore IotHubCapacityExporter/IotHubCapacityExporter.csproj
 
     - name: Build project
       run: dotnet build --configuration Release IotHubCapacityExporter/IotHubCapacityExporter.csproj
