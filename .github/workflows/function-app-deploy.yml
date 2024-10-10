@@ -19,13 +19,13 @@ jobs:
     - name: Restore dependencies
       run: |
         ls -lart
-        dotnet restore IotHubCapacityExporter/IotHubCapacityExporter.csproj
+        dotnet restore IotHubCapcityExporter/IotHubCapcityExporter.csproj
 
     - name: Build project
-      run: dotnet build --configuration Release IotHubCapacityExporter/IotHubCapacityExporter.csproj
+      run: dotnet build --configuration Release IotHubCapcityExporter/IotHubCapcityExporter.csproj
 
     - name: Publish project
-      run: dotnet publish --configuration Release --output ./publish IotHubCapacityExporter/IotHubCapacityExporter.csproj
+      run: dotnet publish --configuration Release --output ./publish IotHubCapcityExporter/IotHubCapcityExporter.csproj
 
     - name: Zip published project
       run: zip -r functionapp.zip ./publish
@@ -73,7 +73,7 @@ jobs:
         ACCESS_TOKEN: ${{ steps.get_token.outputs.token }}
       with:
         script: |
-          const response = await fetch(`https://${{ env.FUNCTION_APP_NAME }}.azurewebsites.net/api/IoTHubCapacityExporter`, {
+          const response = await fetch(`https://${{ env.FUNCTION_APP_NAME }}.azurewebsites.net/api/IotHubCapcityExporter`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
