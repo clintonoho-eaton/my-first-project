@@ -17,19 +17,15 @@ jobs:
         dotnet-version: '3.1.x' # Adjust the version as needed
 
     - name: Restore dependencies
-      working-directory: IoTHubCapacityExporter
-      run: dotnet restore 
+      run: dotnet restore IotHubCapacityExporter/IotHubCapacityExporter.csproj
 
     - name: Build project
-      working-directory: IoTHubCapacityExporter
-      run: dotnet build --configuration Release IoTHubCapacityExporter/
+      run: dotnet build --configuration Release IotHubCapacityExporter/IotHubCapacityExporter.csproj
 
     - name: Publish project
-      working-directory: IoTHubCapacityExporter
-      run: dotnet publish --configuration Release --output ./publish IoTHubCapacityExporter/
+      run: dotnet publish --configuration Release --output ./publish IotHubCapacityExporter/IotHubCapacityExporter.csproj
 
     - name: Zip published project
-      working-directory: IoTHubCapacityExporter
       run: zip -r functionapp.zip ./publish
 
     - name: Set up Azure CLI
@@ -59,12 +55,10 @@ jobs:
         az network private-dns record-set a add-record --resource-group myResourceGroup --zone-name "privatelink.azurewebsites.net" --record-set-name myFunctionApp --ipv4-address $(az network private-endpoint show --name myPrivateEndpoint --resource-group myResourceGroup --query 'customDnsConfigs[0].ipAddresses[0]' --output tsv)
 
     - name: Deploy Function App
-      working-directory: IoTHubCapacityExporter
       run: |
         az functionapp deployment source config-zip --resource-group myResourceGroup --name myFunctionApp --src functionapp.zip
 
     - name: Get Access Token
-      working-directory: IoTHubCapacityExporter
       id: get_token
       run: |
         AZURE_ACCESS_TOKEN=$(az account get-access-token --resource=https://management.azure.com --query accessToken --output tsv)
