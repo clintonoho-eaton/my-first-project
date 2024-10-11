@@ -49,7 +49,7 @@ jobs:
     - name: Create Function App with Premium Plan
       run: |
         az functionapp plan create --name myPremiumPlan --resource-group myResourceGroup --location eastus --number-of-workers 1 --sku EP1
-        az functionapp create --name etncustommetric --storage-account ${{ env.STORAGE_ACCOUNT_NAME }} --plan myPremiumPlan --resource-group myResourceGroup --functions-version 4 --https-only true
+        az functionapp create --name etncustommetric --storage-account ${{ env.STORAGE_ACCOUNT_NAME }} --plan myPremiumPlan --resource-group ${{ secrets.RESOURCE_GROUP }} --functions-version 4 --https-only true
 
     # - name: Configure Private Endpoint
     #   run: |
