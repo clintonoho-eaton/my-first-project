@@ -84,11 +84,10 @@ jobs:
     - name: Trigger Azure Function App
       uses: actions/github-script@v5
       env:
-        FUNCTION_APP_NAME: etncustommetric
+        FUNCTION_APP_NAME: myFunctionApp
         ACCESS_TOKEN: ${{ steps.get_token.outputs.token }}
       with:
         script: |
-          const fetch = require('node-fetch');
           const maxRetries = 5;
           const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
