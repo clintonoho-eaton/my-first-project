@@ -40,13 +40,16 @@ jobs:
         az group create --name myResourceGroup --location eastus
 
     - name: Create Storage Account
+      id: create_storage_account
       run: |
-        az storage account create --name mystorageaccount$RANDOM --location eastus --resource-group myResourceGroup --sku Standard_LRS --allow-blob-public-access false
+        STORAGE_ACCOUNT_NAME=mystorageaccount$RANDOM
+        echo "STORAGE_ACCOUNT_NAME=$STORAGE_ACCOUNT_NAME" >> $GITHUB_ENV
+        az storage account create --name $STORAGE_ACCOUNT_NAME --location eastus --resource-group myResourceGroup --sku Standard_LRS --allow-blob-public-access false
 
     - name: Create Function App with Premium Plan
       run: |
         az functionapp plan create --name myPremiumPlan --resource-group myResourceGroup --location eastus --number-of-workers 1 --sku EP1
-        az functionapp create --name myFunctionApp --storage-account mystorageaccount$RANDOM --plan myPremiumPlan --resource-group myResourceGroup --functions-version 4
+        az functionapp create --name myFunctionApp --storage-account ${{ env.STORAGE_ACCOUNT_NAME }} --plan myPremiumPlan --resource-group myResourceGroup --functions-version 4
 
     - name: Configure Private Endpoint
       run: |
