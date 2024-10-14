@@ -37,7 +37,13 @@ namespace IoTHubCapacity
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
 
             // Authenticate with Azure
-            string accessToken = await GetAzureAccessTokenAsync();
+            // string accessToken = await GetAzureAccessTokenAsync();
+            string accessToken = req.Headers["ACCESS_TOKEN"];
+            
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                return new BadRequestObjectResult("ACCESS_TOKEN is missing");
+            }
 
             // Get IoT Hub capacity metrics
             var capacityMetrics = await GetIoTHubCapacityMetricsAsync(accessToken, log);
