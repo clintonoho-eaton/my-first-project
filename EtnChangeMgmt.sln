@@ -5,7 +5,7 @@ VisualStudioVersion = 17.5.002.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DeviceConnectivityTag", "DeviceConnectivityTag\DeviceConnectivityTag.csproj", "{A0618985-3FAF-47DB-9D48-1F0CF400963B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IotHubCapcityExporter", "IotHubCapcityExporter\IotHubCapcityExporter.csproj", "{FE3F9B6A-C2F2-4B36-8049-B4EDE38DBB28}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "IotHubCapacityExporter", "IotHubCapcityExporter\IotHubCapacityExporter.csproj", "{FE3F9B6A-C2F2-4B36-8049-B4EDE38DBB28}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
