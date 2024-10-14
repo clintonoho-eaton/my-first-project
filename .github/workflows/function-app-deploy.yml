@@ -28,7 +28,7 @@ jobs:
       run: dotnet publish --configuration Release --output ./publish IotHubCapacityExporter/IotHubCapacityExporter.csproj
 
     - name: Zip published project
-      run: zip -r IotHubCapacityExporter.zip ./publish
+      run: zip -r test.zip ./publish
 
     - name: Set up Azure CLI
       uses: azure/login@v1
@@ -69,11 +69,14 @@ jobs:
       run: sleep 60 # Wait for 2 minutes to ensure the function app is fully ready
 
     - name: current directory content
-      run: ls -lart
+      run: |
+        ls -lart
+        ls -lart test.zip
+        
       
     - name: Deploy Function App
       run: |
-        az functionapp deployment source config-zip --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --src IotHubCapacityExporter.zip
+        az functionapp deployment source config-zip --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --src test.zip
 
     - name: Wait for Function App to be ready
       run: sleep 60 # Wait for 2 minutes to ensure the function app is fully ready
