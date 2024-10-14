@@ -16,7 +16,7 @@ using System.Net.Http.Headers;
 using Azure;
 using System.Collections.Generic;
 
-namespace EtnTagUtility
+namespace DeviceConnectivity
 {
     public static class DeviceConnectivityFunction
     {
