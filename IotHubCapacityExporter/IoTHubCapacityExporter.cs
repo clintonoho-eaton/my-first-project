@@ -144,7 +144,7 @@ namespace IoTHubCapacity
                     Console.WriteLine($"IoT Hub: {iotHubName}, Metric: {metricName}, Value: {capacity}");
                 }
                 iotHubName = Regex.Replace(iotHubName, @"[^a-zA-Z0-9]", "").ToLower();
-                string metricKey = $"{subscriptionName}.{iotHubName}";
+                string metricKey = $"{subscriptionName}.{iotHubName}.{capacity}";
                 bool metadataPosted = await PostMetricMetadataAsync(metricKey, log);
                 if (metadataPosted)
                 {
