@@ -49,7 +49,7 @@ jobs:
     - name: Create Function App with Premium Plan
       run: |
         az functionapp plan create --name myPremiumPlan --resource-group  ${{ secrets.RESOURCE_GROUP }} --location eastus --number-of-workers 1 --sku EP1
-        az functionapp create --name etncustommetric --storage-account ${{ env.STORAGE_ACCOUNT_NAME }} --plan myPremiumPlan --resource-group ${{ secrets.RESOURCE_GROUP }} --functions-version 4 --https-only true
+        az functionapp create --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --storage-account ${{ env.STORAGE_ACCOUNT_NAME }} --plan myPremiumPlan --resource-group ${{ secrets.RESOURCE_GROUP }} --functions-version 4 --https-only true
 
     - name: Set Function App settings
       run: |
@@ -74,7 +74,7 @@ jobs:
 
     - name: Deploy Function App
       run: |
-        az functionapp deployment source config-zip --resource-group ${{ secrets.RESOURCE_GROUP }} --name etncustommetric --src functionapp.zip
+        az functionapp deployment source config-zip --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --src functionapp.zip
 
     - name: Wait for Function App to be ready
       run: sleep 120 # Wait for 2 minutes to ensure the function app is fully ready
@@ -88,7 +88,7 @@ jobs:
     - name: Trigger Azure Function App
       uses: actions/github-script@v5
       env:
-        FUNCTION_APP_NAME: etncustommetric
+        FUNCTION_APP_NAME: ${{ secrets.AZURE_FUNCTION_APP_NAME }}
         ACCESS_TOKEN: ${{ steps.get_token.outputs.token }}
       with:
         script: |
