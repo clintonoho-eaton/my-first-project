@@ -71,7 +71,7 @@ jobs:
     - name: current directory content
       run: |
         ls -lart
-        ls -lart test.zip
+        ls -lart functionapp.zip
         
       
     - name: Deploy Function App
