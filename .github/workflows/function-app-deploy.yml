@@ -51,9 +51,6 @@ jobs:
         az functionapp plan create --name myPremiumPlan --resource-group  ${{ secrets.RESOURCE_GROUP }} --location eastus --number-of-workers 1 --sku EP1
         az functionapp create --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --storage-account ${{ env.STORAGE_ACCOUNT_NAME }} --plan myPremiumPlan --resource-group ${{ secrets.RESOURCE_GROUP }} --functions-version 4 --https-only true
 
-    - name: Set Function App settings
-      run: |
-        az functionapp config appsettings set --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} --settings "DYNATRACE_TOKEN=${{ secrets.DYNATRACE_TOKEN }}" "DYNATRACE_URL=${{ secrets.DYNATRACE_URL }}" "IOT_BASIC_TIER=${{ secrets.IOT_BASIC_TIER }}" "IOT_STD_TIER=${{ secrets.IOT_STD_TIER }}" "AZURE_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}" "AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}" "AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}" "AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}" "QUERY_LIMIT=${{ secrets.QUERY_LIMIT }}"
 
     # - name: Configure Private Endpoint
     #   run: |
@@ -78,6 +75,10 @@ jobs:
 
     - name: Wait for Function App to be ready
       run: sleep 120 # Wait for 2 minutes to ensure the function app is fully ready
+
+    - name: Set Function App settings
+      run: |
+        az functionapp config appsettings set --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} --settings "DYNATRACE_TOKEN=${{ secrets.DYNATRACE_TOKEN }}" "DYNATRACE_URL=${{ secrets.DYNATRACE_URL }}" "IOT_BASIC_TIER=${{ secrets.IOT_BASIC_TIER }}" "IOT_STD_TIER=${{ secrets.IOT_STD_TIER }}" "AZURE_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}" "AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}" "AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}" "AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}" "QUERY_LIMIT=${{ secrets.QUERY_LIMIT }}"
 
     - name: Get Access Token
       id: get_token
