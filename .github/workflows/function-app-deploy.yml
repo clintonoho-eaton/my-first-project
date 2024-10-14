@@ -35,10 +35,6 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Create Resource Group
-      run: |
-        az group create --name  ${{ secrets.RESOURCE_GROUP }} --location eastus
-
     - name: Create Storage Account
       id: create_storage_account
       run: |
