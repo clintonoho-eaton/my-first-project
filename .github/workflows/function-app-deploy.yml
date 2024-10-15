@@ -156,9 +156,9 @@ jobs:
          -H "x-functions-key: ${{ env.FUNCTION_KEY }}" \
          -H "Content-Type: application/json"
           
-    # - name: Wait for Function App processing
-    #   run: sleep 60 # Adjust the sleep time as needed
+    - name: Wait for Function App processing
+      run: sleep 60 # Adjust the sleep time as needed
 
-    # - name: Destroy Infrastructure
-    #   run: |
-    #     az group delete --name  ${{ secrets.RESOURCE_GROUP }} --yes --no-wait
+    - name: Destroy Infrastructure
+      run: |
+        az group delete --name  ${{ secrets.RESOURCE_GROUP }} --yes --no-wait
