@@ -28,7 +28,10 @@ jobs:
       run: dotnet publish --configuration Release --output ./publish IotHubCapacityExporter/IotHubCapacityExporter.csproj
 
     - name: Zip published project
-      run: zip -r functionapp.zip ./publish
+      run: |
+        cd ./publish
+        zip -r ../functionapp.zip ./*
+        cd ..
 
     - name: Set up Azure CLI
       uses: azure/login@v1
