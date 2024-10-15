@@ -149,6 +149,8 @@ jobs:
     #       }
 
     - name: Trigger Function App
+      env:
+        FUNCTION_APP_NAME: ${{ secrets.AZURE_FUNCTION_APP_NAME }}
       run: |
         curl -X GET "https://${{ env.FUNCTION_APP_NAME }}.azurewebsites.net/api/IoTHubCapacityExporter" \
          -H "x-functions-key: ${{ env.FUNCTION_KEY }}" \
