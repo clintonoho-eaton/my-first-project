@@ -102,16 +102,15 @@ jobs:
       id: get_token
       run: |
         AZURE_ACCESS_TOKEN=$(az account get-access-token --resource=https://management.azure.com --query accessToken --output tsv)
-        echo "::set-output name=token::$AZURE_ACCESS_TOKEN"
+        echo "AZURE_ACCESS_TOKEN=$AZURE_ACCESS_TOKEN" >> $GITHUB_ENV
 
     - name: Trigger Azure Function App
       uses: actions/github-script@v5
       env:
         FUNCTION_APP_NAME: ${{ secrets.AZURE_FUNCTION_APP_NAME }}
-        ACCESS_TOKEN: ${{ steps.get_token.outputs.token }}
       with:
         script: |
-          const maxRetries = 3; // Increased retries
+          const maxRetries = 3;
           const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
           for (let i = 0; i < maxRetries; i++) {
@@ -120,7 +119,7 @@ jobs:
                 method: 'GET',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${{ env.ACCESS_TOKEN }}`
+                  'Authorization': `Bearer ${{ env.AZURE_ACCESS_TOKEN }}`
                 }
               });
 
