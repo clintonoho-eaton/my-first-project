@@ -38,17 +38,17 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Create Storage Account
-      id: create_storage_account
-      run: |
-        STORAGE_ACCOUNT_NAME=mystorageaccount$RANDOM
-        echo "STORAGE_ACCOUNT_NAME=$STORAGE_ACCOUNT_NAME" >> $GITHUB_ENV
-        az storage account create --name $STORAGE_ACCOUNT_NAME --location eastus --resource-group  ${{ secrets.RESOURCE_GROUP }} --sku Standard_LRS --allow-blob-public-access false
+    # - name: Create Storage Account
+    #   id: create_storage_account
+    #   run: |
+    #     STORAGE_ACCOUNT_NAME=mystorageaccount$RANDOM
+    #     echo "STORAGE_ACCOUNT_NAME=$STORAGE_ACCOUNT_NAME" >> $GITHUB_ENV
+    #     az storage account create --name $STORAGE_ACCOUNT_NAME --location eastus --resource-group  ${{ secrets.RESOURCE_GROUP }} --sku Standard_LRS --allow-blob-public-access false
 
-    - name: Create Function App with Premium Plan
-      run: |
-        az functionapp plan create --name myPremiumPlan --resource-group  ${{ secrets.RESOURCE_GROUP }} --location eastus --number-of-workers 1 --sku EP1
-        az functionapp create --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --storage-account ${{ env.STORAGE_ACCOUNT_NAME }} --plan myPremiumPlan --resource-group ${{ secrets.RESOURCE_GROUP }} --functions-version 4 --https-only true
+    # - name: Create Function App with Premium Plan
+    #   run: |
+    #     az functionapp plan create --name myPremiumPlan --resource-group  ${{ secrets.RESOURCE_GROUP }} --location eastus --number-of-workers 1 --sku EP1
+    #     az functionapp create --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --storage-account ${{ env.STORAGE_ACCOUNT_NAME }} --plan myPremiumPlan --resource-group ${{ secrets.RESOURCE_GROUP }} --functions-version 4 --https-only true
 
 
     # - name: Configure Private Endpoint
@@ -78,9 +78,9 @@ jobs:
         unzip -l functionapp.zip
         ls -lart
       
-    - name: Deploy Function App
-      run: |
-        az functionapp deployment source config-zip --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --src functionapp.zip
+    # - name: Deploy Function App
+    #   run: |
+    #     az functionapp deployment source config-zip --resource-group ${{ secrets.RESOURCE_GROUP }} --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --src functionapp.zip
     - name: Deploy Function App
       uses: Azure/functions-action@v1.5.1
       with:
@@ -92,8 +92,12 @@ jobs:
       
     - name: Set Function App settings
       run: |
-        az functionapp config appsettings set --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} --settings "DYNATRACE_TOKEN=${{ secrets.DYNATRACE_TOKEN }}" "DYNATRACE_URL=${{ secrets.DYNATRACE_URL }}" "IOT_BASIC_TIER=${{ secrets.IOT_BASIC_TIER }}" "IOT_STD_TIER=${{ secrets.IOT_STD_TIER }}" "AZURE_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}" "AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}" "AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}" "AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}" "QUERY_LIMIT=${{ secrets.QUERY_LIMIT }}"
-
+        az functionapp config appsettings set --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} --settings "WEBSITE_RUN_FROM_PACKAGE=1" "DYNATRACE_TOKEN=${{ secrets.DYNATRACE_TOKEN }}" "DYNATRACE_URL=${{ secrets.DYNATRACE_URL }}" "IOT_BASIC_TIER=${{ secrets.IOT_BASIC_TIER }}" "IOT_STD_TIER=${{ secrets.IOT_STD_TIER }}" "AZURE_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}" "AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}" "AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}" "AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}" "QUERY_LIMIT=${{ secrets.QUERY_LIMIT }}"
+        
+    - name: Restart Azure Function App
+      run: |
+        az functionapp restart --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }}
+        
     - name: Get Access Token
       id: get_token
       run: |
@@ -137,9 +141,9 @@ jobs:
             }
           }
           
-    - name: Wait for Function App processing
-      run: sleep 60 # Adjust the sleep time as needed
+    # - name: Wait for Function App processing
+    #   run: sleep 60 # Adjust the sleep time as needed
 
-    - name: Destroy Infrastructure
-      run: |
-        az group delete --name  ${{ secrets.RESOURCE_GROUP }} --yes --no-wait
+    # - name: Destroy Infrastructure
+    #   run: |
+    #     az group delete --name  ${{ secrets.RESOURCE_GROUP }} --yes --no-wait
