@@ -107,7 +107,7 @@ jobs:
     - name: Get Function App Key
       id: get_function_key
       run: |
-        FUNCTION_KEY=$(az functionapp function keys list --function-name ${{ secrets.AZURE_FUNCTION_APP_NAME }} \
+        FUNCTION_KEY=$(az functionapp function keys list --debug --function-name ${{ secrets.AZURE_FUNCTION_APP_NAME }} \
          --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} \
          --resource-group ${{ secrets.RESOURCE_GROUP }} --query "default" -o tsv)
         echo "FUNCTION_KEY=$FUNCTION_KEY" >> $GITHUB_ENV
