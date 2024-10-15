@@ -68,8 +68,8 @@ jobs:
     #     az network private-dns link vnet create --resource-group  ${{ secrets.RESOURCE_GROUP }} --zone-name "privatelink.azurewebsites.net" --name myDNSLink --virtual-network $EXISTING_VNET_NAME --registration-enabled false
     #     az network private-dns record-set a add-record --resource-group  ${{ secrets.RESOURCE_GROUP }} --zone-name "privatelink.azurewebsites.net" --record-set-name myFunctionApp --ipv4-address $(az network private-endpoint show --name myPrivateEndpoint --resource-group  ${{ secrets.RESOURCE_GROUP }} --query 'customDnsConfigs[0].ipAddresses[0]' --output tsv)
 
-    # - name: Wait for Function App to be ready
-    #   run: sleep 60 # Wait for 2 minutes to ensure the function app is fully ready
+    - name: Wait for Function App to be ready
+      run: sleep 120 # Wait for 2 minutes to ensure the function app is fully ready
 
     - name: current directory content
       run: |
@@ -88,7 +88,7 @@ jobs:
         package: functionapp.zip
 
     - name: Wait for Function App to be ready
-      run: sleep 60 # Wait for 2 minutes to ensure the function app is fully ready
+      run: sleep 120 # Wait for 2 minutes to ensure the function app is fully ready
       
     - name: Set Function App settings
       run: |
@@ -111,7 +111,7 @@ jobs:
          --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} \
          --resource-group ${{ secrets.RESOURCE_GROUP }} --query "default" -o tsv)
         echo "FUNCTION_KEY=$FUNCTION_KEY" >> $GITHUB_ENV
-
+        
     # - name: Trigger Azure Function App
     #   uses: actions/github-script@v5
     #   env:
