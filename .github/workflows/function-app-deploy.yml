@@ -38,17 +38,17 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    # - name: Create Storage Account
-    #   id: create_storage_account
-    #   run: |
-    #     STORAGE_ACCOUNT_NAME=mystorageaccount$RANDOM
-    #     echo "STORAGE_ACCOUNT_NAME=$STORAGE_ACCOUNT_NAME" >> $GITHUB_ENV
-    #     az storage account create --name $STORAGE_ACCOUNT_NAME --location eastus --resource-group  ${{ secrets.RESOURCE_GROUP }} --sku Standard_LRS --allow-blob-public-access false
+    - name: Create Storage Account
+      id: create_storage_account
+      run: |
+        STORAGE_ACCOUNT_NAME=mystorageaccount$RANDOM
+        echo "STORAGE_ACCOUNT_NAME=$STORAGE_ACCOUNT_NAME" >> $GITHUB_ENV
+        az storage account create --name $STORAGE_ACCOUNT_NAME --location eastus --resource-group  ${{ secrets.RESOURCE_GROUP }} --sku Standard_LRS --allow-blob-public-access false
 
-    # - name: Create Function App with Premium Plan
-    #   run: |
-    #     az functionapp plan create --name myPremiumPlan --resource-group  ${{ secrets.RESOURCE_GROUP }} --location eastus --number-of-workers 1 --sku EP1
-    #     az functionapp create --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --storage-account ${{ env.STORAGE_ACCOUNT_NAME }} --plan myPremiumPlan --resource-group ${{ secrets.RESOURCE_GROUP }} --functions-version 4 --https-only true
+    - name: Create Function App with Premium Plan
+      run: |
+        az functionapp plan create --name myPremiumPlan --resource-group  ${{ secrets.RESOURCE_GROUP }} --location eastus --number-of-workers 1 --sku EP1
+        az functionapp create --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --storage-account ${{ env.STORAGE_ACCOUNT_NAME }} --plan myPremiumPlan --resource-group ${{ secrets.RESOURCE_GROUP }} --functions-version 4 --https-only true
 
 
     # - name: Configure Private Endpoint
@@ -98,11 +98,19 @@ jobs:
       run: |
         az functionapp restart --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }}
         
-    - name: Get Access Token
-      id: get_token
+    # - name: Get Access Token
+    #   id: get_token
+    #   run: |
+    #     AZURE_ACCESS_TOKEN=$(az account get-access-token --resource=https://management.azure.com --query accessToken --output tsv)
+    #     echo "AZURE_ACCESS_TOKEN=$AZURE_ACCESS_TOKEN" >> $GITHUB_ENV
+
+    - name: Get Function App Key
+      id: get_function_key
       run: |
-        AZURE_ACCESS_TOKEN=$(az account get-access-token --resource=https://management.azure.com --query accessToken --output tsv)
-        echo "AZURE_ACCESS_TOKEN=$AZURE_ACCESS_TOKEN" >> $GITHUB_ENV
+        FUNCTION_KEY=$(az functionapp function keys list --function-name ${{ secrets.AZURE_FUNCTION_APP_NAME }} \
+         --name ${{ secrets.AZURE_FUNCTION_APP_NAME }} \
+         --resource-group ${{ secrets.RESOURCE_GROUP }} --query "default" -o tsv)
+        echo "FUNCTION_KEY=$FUNCTION_KEY" >> $GITHUB_ENV
 
     - name: Trigger Azure Function App
       uses: actions/github-script@v5
@@ -119,7 +127,7 @@ jobs:
                 method: 'GET',
                 headers: {
                   'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${{ env.AZURE_ACCESS_TOKEN }}`
+                  'x-functions-key': `${{ env.FUNCTION_KEY }}`
                 }
               });
 
