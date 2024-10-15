@@ -112,41 +112,47 @@ jobs:
          --resource-group ${{ secrets.RESOURCE_GROUP }} --query "default" -o tsv)
         echo "FUNCTION_KEY=$FUNCTION_KEY" >> $GITHUB_ENV
 
-    - name: Trigger Azure Function App
-      uses: actions/github-script@v5
-      env:
-        FUNCTION_APP_NAME: ${{ secrets.AZURE_FUNCTION_APP_NAME }}
-      with:
-        script: |
-          const maxRetries = 3;
-          const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+    # - name: Trigger Azure Function App
+    #   uses: actions/github-script@v5
+    #   env:
+    #     FUNCTION_APP_NAME: ${{ secrets.AZURE_FUNCTION_APP_NAME }}
+    #   with:
+    #     script: |
+    #       const maxRetries = 3;
+    #       const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-          for (let i = 0; i < maxRetries; i++) {
-            try {
-              const response = await fetch(`https://${{ env.FUNCTION_APP_NAME }}.azurewebsites.net/api/IoTHubCapacityExporter`, {
-                method: 'GET',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'x-functions-key': `${{ env.FUNCTION_KEY }}`
-                }
-              });
+    #       for (let i = 0; i < maxRetries; i++) {
+    #         try {
+    #           const response = await fetch(`https://${{ env.FUNCTION_APP_NAME }}.azurewebsites.net/api/IoTHubCapacityExporter`, {
+    #             method: 'GET',
+    #             headers: {
+    #               'Content-Type': 'application/json',
+    #               'x-functions-key': `${{ env.FUNCTION_KEY }}`
+    #             }
+    #           });
 
-              if (response.ok) {
-                console.log('Function triggered successfully');
-                break;
-              } else {
-                console.log(`Attempt ${i + 1} failed with status: ${response.status}`);
-              }
-            } catch (error) {
-              console.log(`Attempt ${i + 1} failed with error: ${error.message}`);
-            }
+    #           if (response.ok) {
+    #             console.log('Function triggered successfully');
+    #             break;
+    #           } else {
+    #             console.log(`Attempt ${i + 1} failed with status: ${response.status}`);
+    #           }
+    #         } catch (error) {
+    #           console.log(`Attempt ${i + 1} failed with error: ${error.message}`);
+    #         }
 
-            if (i < maxRetries - 1) {
-              await delay(10000); // Increased delay to 10 seconds
-            } else {
-              throw new Error('Failed to trigger function after multiple attempts');
-            }
-          }
+    #         if (i < maxRetries - 1) {
+    #           await delay(10000); // Increased delay to 10 seconds
+    #         } else {
+    #           throw new Error('Failed to trigger function after multiple attempts');
+    #         }
+    #       }
+
+    - name: Trigger Function App
+      run: |
+        curl -X GET "https://${{ env.FUNCTION_APP_NAME }}.azurewebsites.net/api/IoTHubCapacityExporter" \
+         -H "x-functions-key: ${{ env.FUNCTION_KEY }}" \
+         -H "Content-Type: application/json
           
     # - name: Wait for Function App processing
     #   run: sleep 60 # Adjust the sleep time as needed
