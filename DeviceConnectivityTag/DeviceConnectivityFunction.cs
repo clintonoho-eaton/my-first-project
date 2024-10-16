@@ -15,44 +15,39 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using Azure;
 using System.Collections.Generic;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 
 namespace DeviceConnectivity
 {
     public static class DeviceConnectivityFunction
     {
-        private static DeviceClient _deviceClient;
         private static RegistryManager registryManager = RegistryManager.CreateFromConnectionString(Environment.GetEnvironmentVariable("IOT_HUB_CONNECTION_STRING"));
         private static string dynatraceUrl = Environment.GetEnvironmentVariable("DYNATRACE_URL"); // Replace with your Dynatrace environment
         private static string dynatraceApiToken = Environment.GetEnvironmentVariable("DYNATRACE_TOKEN");
-        
 
         [FunctionName("DeviceConnectivityFunction")]
-        public static async Task Run([TimerTrigger("0 */5 * * * *")] TimerInfo myTimer, ILogger log)
+        public static async Task<IActionResult> Run(
+            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
+            ILogger log)
         {
-            log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
-            string deviceConnectionString = Environment.GetEnvironmentVariable("IoTHubDeviceConnectionString");
-            /*_deviceClient = DeviceClient.CreateFromConnectionString(deviceConnectionString, Microsoft.Azure.Devices.Client.TransportType.Mqtt);*/
-            /*var deviceId = "3da2687f-ee72-4c0d-94d9-7790541fb30f";
-            var twin = await GetDeviceConnectivityAsync(deviceId);
-            log.LogInformation($"Device {deviceId} connectivity status: {twin.ConnectionState.ToString()}");
-            // Send the connectivity data to Dynatrace
-            await SendConnectivityToDynatrace(deviceId, twin, log);*/
-            // Get the list of device IDs from IoT Hub
+            log.LogInformation("C# HTTP trigger function executed at: {DateTime.Now}");
             var deviceIds = await GetDeviceIdsAsync();
 
             foreach (var deviceId in deviceIds)
             {
                 var twin = await GetDeviceConnectivityAsync(deviceId);
                 log.LogInformation($"Device {deviceId} connectivity status: {twin.ConnectionState.ToString()}");
-                // Send the connectivity data to Dynatrace
                 await SendConnectivityToDynatrace(deviceId, twin, log);
             }
+
+            return new OkObjectResult("Device connectivity data processed successfully.");
         }
 
         private static async Task<List<string>> GetDeviceIdsAsync()
         {
             var deviceIds = new List<string>();
-            var query = registryManager.CreateQuery("SELECT deviceId FROM devices",100);
+            var query = registryManager.CreateQuery("SELECT deviceId FROM devices", 100);
 
             while (query.HasMoreResults)
             {
@@ -74,20 +69,16 @@ namespace DeviceConnectivity
                 CheckAdditionalContent = false
             };
             var twin = await registryManager.GetTwinAsync(deviceId);
-            // Apply tags (metadata) to the device twin
             twin.Tags["D2C-CONNECTION-STATUS"] = twin.ConnectionState.ToString();
-      
-            // Update the twin with the new tags
             await registryManager.UpdateTwinAsync(deviceId, twin, twin.ETag);
-            return twin;  // Returns "Connected" or "Disconnected"
+            return twin;
         }
 
-        // Send connectivity data to Dynatrace as a custom metric
         private static async Task SendConnectivityToDynatrace(string deviceId, Twin twin, ILogger log)
         {
             string metricKey = "custom.device.connectivity";
             bool metadataPosted = await PostMetricMetadataAsync(metricKey, log, twin);
-            if (metadataPosted )
+            if (metadataPosted)
             {
                 int metricValue = twin.ConnectionState.ToString().Equals("Connected", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
                 string sanitizedDeviceId = deviceId.Replace("-", "");
@@ -107,52 +98,37 @@ namespace DeviceConnectivity
                 {
                     log.LogError($"Failed to send data to Dynatrace: {response.Content}");
                 }
-
             }
-
         }
 
-        // Function to post custom metric metadata
         private static async Task<bool> PostMetricMetadataAsync(string metricKey, ILogger log, Twin twin)
         {
             var url = $"{dynatraceUrl}/api/v2/settings/objects";
-            var  client = new HttpClient();
-            // Check if the Authorization header already exists
+            var client = new HttpClient();
             if (!client.DefaultRequestHeaders.Contains("Authorization"))
             {
                 client.DefaultRequestHeaders.Add("Authorization", $"Api-Token {dynatraceApiToken}");
             }
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             var json = $@"
-[{{
-    ""schemaId"": ""builtin:metric.metadata"",
-    ""scope"": ""metric-{metricKey}"",
-    ""value"": {{
-        ""displayName"": ""Device Connectivity"",
-        ""tags"": [""{"D2C-"+twin.ConnectionState.ToString()}""],
-        ""unit"": ""None""
-    }}
-}}]";
+    [{{
+        ""schemaId"": ""builtin:metric.metadata"",
+        ""scope"": ""metric-{metricKey}"",
+        ""value"": {{
+            ""displayName"": ""Device Connectivity"",
+            ""tags"": [""{"D2C-" + twin.ConnectionState.ToString()}""],
+            ""unit"": ""None""
+        }}
+    }}]";
 
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-
 
             try
             {
                 HttpResponseMessage response = await client.PostAsync(url, content);
                 response.EnsureSuccessStatusCode();
-                
                 string responseBody = await response.Content.ReadAsStringAsync();
-
-                if (response.IsSuccessStatusCode)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-
+                return response.IsSuccessStatusCode;
             }
             catch (HttpRequestException e)
             {

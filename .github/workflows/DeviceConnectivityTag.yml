@@ -1,8 +1,11 @@
-name: Deploy, Test, and Destroy IoTHubCapacityExporter Azure Function App
+name: Deploy, Test, and Destroy DeviceConnectivityTag Azure Function App
 
 on:
   workflow_dispatch:
     inputs:
+      IOT_HUB_CONNECTION_STRING:
+        description: 'IoT Hub Connection String'
+        required: true
       azure_client_id:
         description: 'Azure Client ID'
         required: true
@@ -30,10 +33,7 @@ on:
         description: 'Name of your function and function app subdomain'
         required: true
         type: string
-      RESOURCE_GROUP:
-        description: 'Azure Resource Group Name'
-        required: true
-        type: string
+
 
 
 jobs:
@@ -53,7 +53,7 @@ jobs:
         echo "DYNATRACE_URL=${{ github.event.inputs.dynatrace_url }}" >> $GITHUB_ENV
         echo "DYNATRACE_TOKEN=${{ github.event.inputs.dynatrace_token }}" >> $GITHUB_ENV
         echo "AZURE_FUNCTION_APP_NAME=${{ github.event.inputs.AZURE_FUNCTION_APP_NAME }}" >> $GITHUB_ENV
-        echo "RESOURCE_GROUP=${{ github.event.inputs.RESOURCE_GROUP }}" >> $GITHUB_ENV
+        echo "IOT_HUB_CONNECTION_STRING=${{ github.event.inputs.IOT_HUB_CONNECTION_STRING }}" >> $GITHUB_ENV
 
 
     - name: Set up .NET Core
@@ -64,13 +64,13 @@ jobs:
     - name: Restore dependencies
       run: |
         ls -lart
-        dotnet restore IotHubCapacityExporter/IotHubCapacityExporter.csproj
+        dotnet restore DeviceConnectivityTag/DeviceConnectivityTag.csproj
 
     - name: Build project
-      run: dotnet build --configuration Release IotHubCapacityExporter/IotHubCapacityExporter.csproj
+      run: dotnet build --configuration Release DeviceConnectivityTag/DeviceConnectivityTag.csproj
 
     - name: Publish project
-      run: dotnet publish --configuration Release --output ./publish IotHubCapacityExporter/IotHubCapacityExporter.csproj
+      run: dotnet publish --configuration Release --output ./publish DeviceConnectivityTag/DeviceConnectivityTag.csproj
 
     - name: Zip published project
       run: |
@@ -88,7 +88,7 @@ jobs:
            "tenantId": "${{ env.AZURE_TENANT_ID }}",
            "subscriptionId": "${{ env.AZURE_SUBSCRIPTION_ID }}"
          }
-    
+         
     - name: Create Resource Group
       run: |
         az group create --name ${{ env.RESOURCE_GROUP }} --location eastus
@@ -104,24 +104,6 @@ jobs:
       run: |
         az functionapp plan create --name myPremiumPlan --resource-group  ${{ env.RESOURCE_GROUP }} --location eastus --number-of-workers 1 --sku EP1
         az functionapp create --name ${{ env.AZURE_FUNCTION_APP_NAME }} --storage-account ${{ env.STORAGE_ACCOUNT_NAME }} --plan myPremiumPlan --resource-group ${{ env.RESOURCE_GROUP }} --functions-version 4 --https-only true
-
-
-    # - name: Configure Private Endpoint
-    #   run: |
-    #     az network vnet create --name myVNet --resource-group  ${{ env.RESOURCE_GROUP }} --subnet-name mySubnet
-    #     az network private-endpoint create --name myPrivateEndpoint --resource-group  ${{ env.RESOURCE_GROUP }} --vnet-name myVNet --subnet mySubnet --private-connection-resource-id $(az functionapp show --name myFunctionApp --resource-group  ${{ env.RESOURCE_GROUP }} --query id --output tsv) --group-ids sites
-    #     az network private-dns zone create --resource-group  ${{ env.RESOURCE_GROUP }} --name "privatelink.azurewebsites.net"
-    #     az network private-dns link vnet create --resource-group  ${{ env.RESOURCE_GROUP }} --zone-name "privatelink.azurewebsites.net" --name myDNSLink --virtual-network myVNet --registration-enabled false
-    #     az network private-dns record-set a add-record --resource-group  ${{ env.RESOURCE_GROUP }} --zone-name "privatelink.azurewebsites.net" --record-set-name myFunctionApp --ipv4-address $(az network private-endpoint show --name myPrivateEndpoint --resource-group  ${{ env.RESOURCE_GROUP }} --query 'customDnsConfigs[0].ipAddresses[0]' --output tsv)
-    
-    # - name: Configure Private Endpoint
-    #   run: |
-    #     EXISTING_VNET_NAME=ETN-IT-DSET-Dev-VNet
-    #     EXISTING_SUBNET_NAME=snet-data
-    #     az network private-endpoint create --name myPrivateEndpoint --resource-group  ${{ env.RESOURCE_GROUP }} --vnet-name $EXISTING_VNET_NAME --subnet $EXISTING_SUBNET_NAME --private-connection-resource-id $(az functionapp show --name myFunctionApp --resource-group  ${{ env.RESOURCE_GROUP }} --query id --output tsv) --group-ids sites
-    #     az network private-dns zone create --resource-group  ${{ env.RESOURCE_GROUP }} --name "privatelink.azurewebsites.net"
-    #     az network private-dns link vnet create --resource-group  ${{ env.RESOURCE_GROUP }} --zone-name "privatelink.azurewebsites.net" --name myDNSLink --virtual-network $EXISTING_VNET_NAME --registration-enabled false
-    #     az network private-dns record-set a add-record --resource-group  ${{ env.RESOURCE_GROUP }} --zone-name "privatelink.azurewebsites.net" --record-set-name myFunctionApp --ipv4-address $(az network private-endpoint show --name myPrivateEndpoint --resource-group  ${{ env.RESOURCE_GROUP }} --query 'customDnsConfigs[0].ipAddresses[0]' --output tsv)
 
     - name: Wait for Function App to be ready
       run: sleep 120 # Wait for 2 minutes to ensure the function app is fully ready
@@ -141,24 +123,20 @@ jobs:
       with:
         app-name: ${{ env.AZURE_FUNCTION_APP_NAME }}
         package: functionapp.zip
+        app-settings: |
+          IOT_HUB_CONNECTION_STRING=${{ github.event.inputs.IOT_HUB_CONNECTION_STRING }}
 
     - name: Wait for Function App to be ready
       run: sleep 120 # Wait for 2 minutes to ensure the function app is fully ready
       
     - name: Set Function App settings
       run: |
-        az functionapp config appsettings set --name ${{ env.AZURE_FUNCTION_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --settings "WEBSITE_RUN_FROM_PACKAGE=1" "DYNATRACE_TOKEN=${{ env.DYNATRACE_TOKEN }}" "DYNATRACE_URL=${{ env.DYNATRACE_URL }}" "AZURE_SUBSCRIPTION_ID=${{ env.AZURE_SUBSCRIPTION_ID }}" "AZURE_TENANT_ID=${{ env.AZURE_TENANT_ID }}" "AZURE_CLIENT_SECRET=${{ env.AZURE_CLIENT_SECRET }}" "AZURE_CLIENT_ID=${{ env.AZURE_CLIENT_ID }}" "QUERY_LIMIT=${{ secrets.QUERY_LIMIT }}"
+        az functionapp config appsettings set --name ${{ env.AZURE_FUNCTION_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --settings "WEBSITE_RUN_FROM_PACKAGE=1" "DYNATRACE_TOKEN=${{ env.DYNATRACE_TOKEN }}" "DYNATRACE_URL=${{ env.DYNATRACE_URL }}" "AZURE_SUBSCRIPTION_ID=${{ env.AZURE_SUBSCRIPTION_ID }}" "AZURE_TENANT_ID=${{ env.AZURE_TENANT_ID }}" "AZURE_CLIENT_SECRET=${{ env.AZURE_CLIENT_SECRET }}" "AZURE_CLIENT_ID=${{ env.AZURE_CLIENT_ID }}"
         
     - name: Restart Azure Function App
       run: |
         az functionapp restart --name ${{ env.AZURE_FUNCTION_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
         
-    # - name: Get Access Token
-    #   id: get_token
-    #   run: |
-    #     AZURE_ACCESS_TOKEN=$(az account get-access-token --resource=https://management.azure.com --query accessToken --output tsv)
-    #     echo "AZURE_ACCESS_TOKEN=$AZURE_ACCESS_TOKEN" >> $GITHUB_ENV
-
     - name: Get Function App Key
       id: get_function_key
       run: |
@@ -167,41 +145,6 @@ jobs:
          --resource-group ${{ env.RESOURCE_GROUP }} --query "default" -o tsv)
         echo "FUNCTION_KEY=$FUNCTION_KEY" >> $GITHUB_ENV
         
-    # - name: Trigger Azure Function App
-    #   uses: actions/github-script@v5
-    #   env:
-    #     FUNCTION_APP_NAME: ${{ env.AZURE_FUNCTION_APP_NAME }}
-    #   with:
-    #     script: |
-    #       const maxRetries = 3;
-    #       const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-    #       for (let i = 0; i < maxRetries; i++) {
-    #         try {
-    #           const response = await fetch(`https://${{ env.FUNCTION_APP_NAME }}.azurewebsites.net/api/IoTHubCapacityExporter`, {
-    #             method: 'GET',
-    #             headers: {
-    #               'Content-Type': 'application/json',
-    #               'x-functions-key': `${{ env.FUNCTION_KEY }}`
-    #             }
-    #           });
-
-    #           if (response.ok) {
-    #             console.log('Function triggered successfully');
-    #             break;
-    #           } else {
-    #             console.log(`Attempt ${i + 1} failed with status: ${response.status}`);
-    #           }
-    #         } catch (error) {
-    #           console.log(`Attempt ${i + 1} failed with error: ${error.message}`);
-    #         }
-
-    #         if (i < maxRetries - 1) {
-    #           await delay(10000); // Increased delay to 10 seconds
-    #         } else {
-    #           throw new Error('Failed to trigger function after multiple attempts');
-    #         }
-    #       }
 
     - name: Trigger Function App
       env:

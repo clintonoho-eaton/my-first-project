@@ -229,23 +229,9 @@ namespace IoTHubCapacity
                 case "Free":
                     return 8000; // Free tier has a fixed limit
                 case "Basic":
-                    if (int.TryParse(Environment.GetEnvironmentVariable("IOT_BASIC_TIER"), out int basicTierLimit))
-                    {
-                        return iotHub.Sku.Capacity * basicTierLimit; // Use the parsed value
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Invalid IOT_BASIC_TIER environment variable");
-                    }
+                    return 400000;
                 case "Standard":
-                    if (int.TryParse(Environment.GetEnvironmentVariable("IOT_STD_TIER"), out int stdTierLimit))
-                    {
-                        return iotHub.Sku.Capacity * stdTierLimit; // Use the parsed value
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException("Invalid IOT_STD_TIER environment variable");
-                    }
+                    return 400000;
                 default:
                     throw new InvalidOperationException("Unknown SKU tier");
             }
