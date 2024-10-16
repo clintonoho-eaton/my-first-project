@@ -126,9 +126,7 @@ jobs:
       uses: Azure/functions-action@v1.5.1
       with:
         app-name: ${{ env.AZURE_FUNCTION_APP_NAME }}
-        package: functionapp.zip
-        app-settings: |
-          IOT_HUB_CONNECTION_STRING=${{ github.event.inputs.IOT_HUB_CONNECTION_STRING }}
+        package: functionapp.zip       
 
     - name: Wait for Function App to be ready
       run: sleep 120 # Wait for 2 minutes to ensure the function app is fully ready
