@@ -152,10 +152,16 @@ jobs:
       env:
         FUNCTION_APP_NAME: ${{ env.AZURE_FUNCTION_APP_NAME }}
       run: |
+        # Log the start of the script
+        echo "Starting the function app trigger script..."
+
         # Execute the curl command and capture the HTTP response code
         HTTP_RESPONSE=$(curl -s -o response.txt -w "%{http_code}" -X GET "$URL" \
           -H "x-functions-key: $FUNCTION_KEY" \
           -H "Content-Type: $CONTENT_TYPE")
+
+        # Log the HTTP response code
+        echo "HTTP response code: $HTTP_RESPONSE"
 
         # Check if the HTTP response code is 200 (OK)
         if [ "$HTTP_RESPONSE" -eq 200 ]; then
@@ -166,6 +172,9 @@ jobs:
           cat response.txt
           exit 1
         fi
+
+        # Log the end of the script
+        echo "Function app trigger script completed."
           
     - name: Wait for Function App processing
       run: sleep 60 # Adjust the sleep time as needed
