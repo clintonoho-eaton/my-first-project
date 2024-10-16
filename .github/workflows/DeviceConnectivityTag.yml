@@ -33,6 +33,10 @@ on:
         description: 'Name of your function and function app subdomain'
         required: true
         type: string
+      RESOURCE_GROUP:
+        description: 'Azure Resource Group Name'
+        required: true
+        type: string
 
 
 
@@ -54,7 +58,7 @@ jobs:
         echo "DYNATRACE_TOKEN=${{ github.event.inputs.dynatrace_token }}" >> $GITHUB_ENV
         echo "AZURE_FUNCTION_APP_NAME=${{ github.event.inputs.AZURE_FUNCTION_APP_NAME }}" >> $GITHUB_ENV
         echo "IOT_HUB_CONNECTION_STRING=${{ github.event.inputs.IOT_HUB_CONNECTION_STRING }}" >> $GITHUB_ENV
-
+        echo "RESOURCE_GROUP=${{ github.event.inputs.RESOURCE_GROUP }}" >> $GITHUB_ENV
 
     - name: Set up .NET Core
       uses: actions/setup-dotnet@v1
