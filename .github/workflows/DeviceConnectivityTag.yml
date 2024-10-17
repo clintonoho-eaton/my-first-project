@@ -148,33 +148,41 @@ jobs:
         echo "FUNCTION_KEY=$FUNCTION_KEY" >> $GITHUB_ENV
         
 
+    # - name: Trigger Function App
+    #   env:
+    #     FUNCTION_APP_NAME: ${{ env.AZURE_FUNCTION_APP_NAME }}
+    #   run: |
+    #     # Log the start of the script
+    #     echo "Starting the function app trigger script..."
+
+    #     # Execute the curl command and capture the HTTP response code
+    #     HTTP_RESPONSE=$(curl -s -o response.txt -w "%{http_code}" -X GET "$URL" \
+    #       -H "x-functions-key: $FUNCTION_KEY" \
+    #       -H "Content-Type: $CONTENT_TYPE")
+
+    #     # Log the HTTP response code
+    #     echo "HTTP response code: $HTTP_RESPONSE"
+
+    #     # Check if the HTTP response code is 200 (OK)
+    #     if [ "$HTTP_RESPONSE" -eq 200 ]; then
+    #       echo "Function app triggered successfully."
+    #       cat response.txt
+    #     else
+    #       echo "Failed to trigger function app. HTTP response code: $HTTP_RESPONSE"
+    #       cat response.txt
+    #       exit 1
+    #     fi
+
+    #     # Log the end of the script
+    #     echo "Function app trigger script completed."
+
     - name: Trigger Function App
       env:
         FUNCTION_APP_NAME: ${{ env.AZURE_FUNCTION_APP_NAME }}
       run: |
-        # Log the start of the script
-        echo "Starting the function app trigger script..."
-
-        # Execute the curl command and capture the HTTP response code
-        HTTP_RESPONSE=$(curl -s -o response.txt -w "%{http_code}" -X GET "$URL" \
-          -H "x-functions-key: $FUNCTION_KEY" \
-          -H "Content-Type: $CONTENT_TYPE")
-
-        # Log the HTTP response code
-        echo "HTTP response code: $HTTP_RESPONSE"
-
-        # Check if the HTTP response code is 200 (OK)
-        if [ "$HTTP_RESPONSE" -eq 200 ]; then
-          echo "Function app triggered successfully."
-          cat response.txt
-        else
-          echo "Failed to trigger function app. HTTP response code: $HTTP_RESPONSE"
-          cat response.txt
-          exit 1
-        fi
-
-        # Log the end of the script
-        echo "Function app trigger script completed."
+        curl -X GET "https://${{ env.FUNCTION_APP_NAME }}.azurewebsites.net/api/${{ env.FUNCTION_APP_NAME }}" \
+         -H "x-functions-key: ${{ env.FUNCTION_KEY }}" \
+         -H "Content-Type: application/json" 
           
     - name: Wait for Function App processing
       run: sleep 60 # Adjust the sleep time as needed
