@@ -1,4 +1,4 @@
-name: Pack, Deploy, Trigger, and Undeploy Azure Function App
+name: One Click Deployment for Change management modules
 
 on:
   workflow_dispatch:
