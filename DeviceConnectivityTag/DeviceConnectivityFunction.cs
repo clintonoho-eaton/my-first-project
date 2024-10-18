@@ -22,7 +22,10 @@ namespace DeviceConnectivity
 {
     public static class DeviceConnectivityFunction
     {
-        private static RegistryManager registryManager = RegistryManager.CreateFromConnectionString(Environment.GetEnvironmentVariable("IOT_HUB_CONNECTION_STRING"));
+        private static readonly string iotHubConnectionString = Environment.GetEnvironmentVariable("IOT_HUB_CONNECTION_STRING");
+           private static readonly RegistryManager registryManager = string.IsNullOrEmpty(iotHubConnectionString) 
+               ? throw new ArgumentNullException("IOT_HUB_CONNECTION_STRING", "IoT Hub connection string is not set.")
+               : RegistryManager.CreateFromConnectionString(iotHubConnectionString);
         private static string dynatraceUrl = Environment.GetEnvironmentVariable("DYNATRACE_URL"); // Replace with your Dynatrace environment
         private static string dynatraceApiToken = Environment.GetEnvironmentVariable("DYNATRACE_TOKEN");
 
