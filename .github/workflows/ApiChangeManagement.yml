@@ -5,18 +5,18 @@ on:
     inputs:
       azure_client_id:
         description: 'Azure Client ID'
-        required: true
+        # required: true
       azure_client_secret:
         description: 'Azure Client Secret'
-        required: true
+        # required: true
         type: string
       azure_tenant_id:
         description: 'Azure Tenant ID'
-        required: true
+        # required: true
         type: string
       azure_subscription_id:
         description: 'Azure Subscription ID'
-        required: true
+        # required: true
         type: string
       servicenow_instance:
         description: 'ServiceNow instance'
@@ -24,11 +24,11 @@ on:
         type: string
       microservice_name:
         description: 'Name of your service'
-        required: true
+        #required: true
         type: string
       RESOURCE_GROUP:
         description: 'Azure Resource Group Name'
-        required: true
+        #required: true
         type: string
       aks_cluster_name:
         description: 'AKS Cluster Name'
