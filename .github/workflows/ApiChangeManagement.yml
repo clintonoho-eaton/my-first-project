@@ -40,7 +40,17 @@ on:
         description: 'AKS Credential'
         type: string
       
-
+env:
+    AZURE_CLIENT_ID=${{ github.event.inputs.azure_client_id }}
+    AZURE_CLIENT_SECRET=${{ github.event.inputs.azure_client_secret }}
+    AZURE_TENANT_ID=${{ github.event.inputs.azure_tenant_id }}
+    AZURE_SUBSCRIPTION_ID=${{ github.event.inputs.azure_subscription_id }}
+    SERVICENOW_INSTANCE=${{ github.event.inputs.servicenow_instance }}
+    MICROSERVICE_NAME=${{ github.event.inputs.microservice_name }}
+    RESOURCE_GROUP=${{ github.event.inputs.RESOURCE_GROUP }}
+    AKS_CLUSTER_NAME=${{github.event.inputs.aks_cluster_name}}
+    AKS_RESOURCE_GROUP=${{github.event.inputs.aks_resource_group}}
+    AKS_CREDENTIALS=${{github.event.inputs.aks_credentials}}
 
 jobs:
  build:
@@ -48,18 +58,7 @@ jobs:
 
    steps:
      
-     - name: Set environment variables
-       run: |
-        echo "AZURE_CLIENT_ID=${{ github.event.inputs.azure_client_id }}" >> $GITHUB_ENV
-        echo "AZURE_CLIENT_SECRET=${{ github.event.inputs.azure_client_secret }}" >> $GITHUB_ENV
-        echo "AZURE_TENANT_ID=${{ github.event.inputs.azure_tenant_id }}" >> $GITHUB_ENV
-        echo "AZURE_SUBSCRIPTION_ID=${{ github.event.inputs.azure_subscription_id }}" >> $GITHUB_ENV
-        echo "SERVICENOW_INSTANCE=${{ github.event.inputs.servicenow_instance }}" >> $GITHUB_ENV
-        echo "MICROSERVICE_NAME=${{ github.event.inputs.microservice_name }}" >> $GITHUB_ENV
-        echo "RESOURCE_GROUP=${{ github.event.inputs.RESOURCE_GROUP }}" >> $GITHUB_ENV
-        echo "AKS_CLUSTER_NAME=${{github.event.inputs.aks_cluster_name}}" >> $GITHUB_ENV
-        echo "AKS_RESOURCE_GROUP=${{github.event.inputs.aks_resource_group}}" >> $GITHUB_ENV
-        echo "AKS_CREDENTIALS=${{github.event.inputs.aks_credentials}}" >> $GITHUB_ENV
+    
     
     # Step 1: Checkout the repository
      - name: Checkout repository
