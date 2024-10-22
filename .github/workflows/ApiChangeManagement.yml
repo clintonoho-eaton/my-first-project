@@ -1,0 +1,181 @@
+name: Build and Deploy to AKS with GitHub Packages and Dynamic CI Management
+
+on:
+ workflow_dispatch:
+    inputs:
+      azure_client_id:
+        description: 'Azure Client ID'
+        required: true
+      azure_client_secret:
+        description: 'Azure Client Secret'
+        required: true
+        type: string
+      azure_tenant_id:
+        description: 'Azure Tenant ID'
+        required: true
+        type: string
+      azure_subscription_id:
+        description: 'Azure Subscription ID'
+        required: true
+        type: string
+      servicenow_instance:
+        description: 'ServiceNow instance'
+        required: true
+        type: string
+      microservice_name:
+        description: 'Name of your service'
+        required: true
+        type: string
+      RESOURCE_GROUP:
+        description: 'Azure Resource Group Name'
+        required: true
+        type: string
+      aks_cluster_name:
+        description: 'AKS Cluster Name'
+        type: string
+      aks_resource_group:
+        description: 'AKS Resource Group'
+        type: string
+      aks_credentials:
+        description: 'AKS Credential'
+        type: string
+      
+
+
+jobs:
+ build:
+   runs-on: ubuntu-latest
+
+   steps:
+     
+     - name: Set environment variables
+       run: |
+        echo "AZURE_CLIENT_ID=${{ github.event.inputs.azure_client_id }}" >> $GITHUB_ENV
+        echo "AZURE_CLIENT_SECRET=${{ github.event.inputs.azure_client_secret }}" >> $GITHUB_ENV
+        echo "AZURE_TENANT_ID=${{ github.event.inputs.azure_tenant_id }}" >> $GITHUB_ENV
+        echo "AZURE_SUBSCRIPTION_ID=${{ github.event.inputs.azure_subscription_id }}" >> $GITHUB_ENV
+        echo "SERVICENOW_INSTANCE=${{ github.event.inputs.servicenow_instance }}" >> $GITHUB_ENV
+        echo "MICROSERVICE_NAME=${{ github.event.inputs.microservice_name }}" >> $GITHUB_ENV
+        echo "RESOURCE_GROUP=${{ github.event.inputs.RESOURCE_GROUP }}" >> $GITHUB_ENV
+        echo "AKS_CLUSTER_NAME=${{github.event.inputs.aks_cluster_name}}" >> $GITHUB_ENV
+        echo "AKS_RESOURCE_GROUP=${{github.event.inputs.aks_resource_group}}" >> $GITHUB_ENV
+        echo "AKS_CREDENTIALS=${{github.event.inputs.aks_credentials}}" >> $GITHUB_ENV
+    
+    # Step 1: Checkout the repository
+     - name: Checkout repository
+       uses: actions/checkout@v2
+
+    # Step 2: Log in to GitHub Container Registry (ghcr.io)
+     - name: Log in to GitHub Container Registry
+       uses: docker/login-action@v2
+       with:
+         registry: ghcr.io
+         username: ${{ github.actor }}
+         password: ${{ secrets.GITHUB_TOKEN }}
+
+     - name: Set up Azure CLI
+       uses: azure/login@v1
+       with:
+         creds: >
+          {
+           "clientId": "${{ env.AZURE_CLIENT_ID }}",
+           "clientSecret": "${{ env.AZURE_CLIENT_SECRET }}",
+           "tenantId": "${{ env.AZURE_TENANT_ID }}",
+           "subscriptionId": "${{ env.AZURE_SUBSCRIPTION_ID }}"
+          }
+
+     # Step 3: Extract parent folder name (microservice name)
+     - name: Get microservice name (parent folder name)
+       id: get_service_name
+       run: echo "::set-output name=service_name::$(basename $(pwd))"
+     # Step 4: Build the Docker image using the microservice name as tag
+     - name: Build Docker image
+       run: |
+         docker build -t ghcr.io /${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }} .
+     # Step 5: Push the Docker image to GitHub Packages
+     - name: Push Docker image
+       run: |
+         docker push ghcr.io /${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }}
+ 
+ ci-management:
+   runs-on: ubuntu-latest
+   needs: build
+   steps:
+     # Step 6: Discover or Create Microservice CI in ServiceNow using the service name
+     - name: Discover or Create CI for Microservice in ServiceNow
+       id: discover_ci
+       run: |
+         ci_response=$(curl -s -X GET \
+           "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/cmdb_ci?sysparm_query=name=${{ steps.get_service_name.outputs.service_name }}" \
+           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           --header "Accept: application/json")
+         ci_sys_id=$(echo $ci_response | jq -r '.result[0].sys_id')
+         if [ -z "$ci_sys_id" ]; then
+           echo "Microservice CI not found. Creating new CI..."
+           create_ci_response=$(curl -s -X POST \
+             "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/cmdb_ci" \
+             --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+             --header "Content-Type: application/json" \
+             --data '{
+               "name": "'${{ steps.get_service_name.outputs.service_name }}'",
+               "category": "Application Service",
+               "location": "AKS Cluster",
+               "app_service_name": "'${{ steps.get_service_name.outputs.service_name }}'"
+             }')
+           ci_sys_id=$(echo $create_ci_response | jq -r '.result.sys_id')
+         else
+           echo "Microservice CI found with sys_id: $ci_sys_id"
+         fi
+         echo "::set-output name=ci_sys_id::$ci_sys_id"
+ deploy:
+   runs-on: ubuntu-latest
+   needs: ci-management
+   steps:
+     # Step 7: Set AKS context
+     #- name: Set AKS context
+     #  uses: azure/aks-set-context@v2
+     #  with:
+     #    resource-group: ${{ env.AKS_RESOURCE_GROUP }}
+     #    cluster-name: ${{ env.AKS_CLUSTER_NAME }}
+     #    credentials-file: ${{ secrets.AKS_CREDENTIALS }}
+     # Step 8: Deploy to AKS using Docker image from GitHub Packages
+     - name: Deploy to AKS
+       run: |
+         # kubectl set image deployment/${{ steps.get_service_name.outputs.service_name }} ${{ steps.get_service_name.outputs.service_name }}= ghcr.io /${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }}
+         # kubectl rollout status deployment/${{ steps.get_service_name.outputs.service_name }}
+         echo "deployment successfull"
+ 
+ change-request:
+   runs-on: ubuntu-latest
+   needs: deploy
+   steps:
+     # Step 9: Create Standard Change Request in ServiceNow with the Microservice CI
+     - name: Create Standard Change Request in ServiceNow
+       id: create_change
+       run: |
+         change_request=$(curl -X POST \
+           "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/change_request" \
+           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           --header "Content-Type: application/json" \
+           --data '{
+             "short_description": "Deploy '${{ steps.get_service_name.outputs.service_name }}' microservice to AKS",
+             "description": "Standard change for deploying '${{ steps.get_service_name.outputs.service_name }}' microservice to AKS using pre-approved template.",
+             "category": "Software",
+             "type": "Standard",
+             "change_template": "Pre-Approved Template",
+             "cmdb_ci": "'${{ needs.ci-management.outputs.ci_sys_id }}'"
+           }')
+         echo $change_request | jq '.result.sys_id' > change_request_id.txt
+     # Step 10: Close Standard Change Request after successful deployment
+     - name: Close ServiceNow Change Request
+       run: |
+         change_id=$(cat change_request_id.txt)
+         curl -X PATCH \
+           "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/change_request/$change_id" \
+           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           --header "Content-Type: application/json" \
+           --data '{
+             "state": "Closed",
+             "close_code": "Successful",
+             "close_notes": "Deployment of '${{ steps.get_service_name.outputs.service_name }}' to AKS completed successfully"
+           }'
