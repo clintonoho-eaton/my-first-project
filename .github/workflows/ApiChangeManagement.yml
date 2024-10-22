@@ -73,16 +73,16 @@ jobs:
          username: ${{ github.actor }}
          password: ${{ secrets.GITHUB_TOKEN }}
 
-     - name: Set up Azure CLI
-       uses: azure/login@v1
-       with:
-         creds: >
-          {
-           "clientId": "${{ env.AZURE_CLIENT_ID }}",
-           "clientSecret": "${{ env.AZURE_CLIENT_SECRET }}",
-           "tenantId": "${{ env.AZURE_TENANT_ID }}",
-           "subscriptionId": "${{ env.AZURE_SUBSCRIPTION_ID }}"
-          }
+#     - name: Set up Azure CLI
+#       uses: azure/login@v1
+#       with:
+#         creds: >
+#          {
+#           "clientId": "${{ env.AZURE_CLIENT_ID }}",
+#           "clientSecret": "${{ env.AZURE_CLIENT_SECRET }}",
+#           "tenantId": "${{ env.AZURE_TENANT_ID }}",
+#           "subscriptionId": "${{ env.AZURE_SUBSCRIPTION_ID }}"
+#          }
 
      # Step 3: Extract parent folder name (microservice name)
      - name: Get microservice name (parent folder name)
