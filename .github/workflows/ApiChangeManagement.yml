@@ -95,11 +95,11 @@ jobs:
      # Step 4: Build the Docker image using the microservice name as tag
      - name: Build Docker image
        run: |
-         docker build -t ghcr.io /${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }} WeatherForecastApi/.
+         docker build -t ghcr.io/${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }} WeatherForecastApi/.
      # Step 5: Push the Docker image to GitHub Packages
      - name: Push Docker image
        run: |
-         docker push ghcr.io /${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }}
+         docker push ghcr.io/${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }}
  
  ci-management:
    runs-on: ubuntu-latest
