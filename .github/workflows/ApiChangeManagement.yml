@@ -188,7 +188,7 @@ jobs:
  
  change-request:
    runs-on: ubuntu-latest
-   needs: deploy
+   needs: [deploy, ci-management]
    steps:
 
      - name: Set environment variables
