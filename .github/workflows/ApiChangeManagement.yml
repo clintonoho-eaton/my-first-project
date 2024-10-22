@@ -88,6 +88,10 @@ jobs:
      - name: Get microservice name (parent folder name)
        id: get_service_name
        run: echo "::set-output name=service_name::$(basename $(pwd))"
+     - name: directory content
+       run: |
+         ls -lart
+         ls -lart WeatherForecastApi
      # Step 4: Build the Docker image using the microservice name as tag
      - name: Build Docker image
        run: |
