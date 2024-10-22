@@ -3,21 +3,21 @@ name: Build and Deploy to AKS with GitHub Packages and Dynamic CI Management
 on:
  workflow_dispatch:
     inputs:
-      azure_client_id:
-        description: 'Azure Client ID'
-        # required: true
-      azure_client_secret:
-        description: 'Azure Client Secret'
-        # required: true
-        type: string
-      azure_tenant_id:
-        description: 'Azure Tenant ID'
-        # required: true
-        type: string
-      azure_subscription_id:
-        description: 'Azure Subscription ID'
-        # required: true
-        type: string
+      # azure_client_id:
+      #   description: 'Azure Client ID'
+      #   # required: true
+      # azure_client_secret:
+      #   description: 'Azure Client Secret'
+      #   # required: true
+      #   type: string
+      # azure_tenant_id:
+      #   description: 'Azure Tenant ID'
+      #   # required: true
+      #   type: string
+      # azure_subscription_id:
+      #   description: 'Azure Subscription ID'
+      #   # required: true
+      #   type: string
       servicenow_instance:
         description: 'ServiceNow instance'
         required: true
