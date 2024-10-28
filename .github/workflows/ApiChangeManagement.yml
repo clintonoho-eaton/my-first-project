@@ -130,40 +130,58 @@ jobs:
        id: get_service_name
        run: echo "::set-output name=service_name::$(basename $(pwd))"
        
-     # Step 6: Discover or Create Microservice CI in ServiceNow using the service name
+     # Step 8: Discover or Create Microservice CI in ServiceNow using the service name
      - name: Discover or Create CI for Microservice in ServiceNow
        id: discover_ci
        run: |
+         # Define the ServiceNow instance and authentication
+         SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+         SN_USER="${{ env.SERVICENOW-USER }}"
+         SN_PASS="${{ env.SERVICENOW-PASSWORD }}"
+         SERVICE_NAME="${{ steps.get_service_name.outputs.service_name }}"
+         # Discover the CI in ServiceNow
+         echo "Attempting to discover CI with name: $SERVICE_NAME"
          ci_response=$(curl -s -X GET \
-           "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/cmdb_ci?sysparm_query=name=${{ steps.get_service_name.outputs.service_name }}" \
-           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           "https://$SN_INSTANCE/api/now/table/cmdb_ci?sysparm_query=name=$SERVICE_NAME" \
+           --user $SN_USER:$SN_PASS \
            --header "Accept: application/json")
+         # Extract sys_id and name if the CI exists
          ci_sys_id=$(echo $ci_response | jq -r '.result[0].sys_id')
          ci_name=$(echo $ci_response | jq -r '.result[0].name')
-         if [ -z "$ci_sys_id" ]; then
-           echo "Microservice CI not found. Creating new CI..."
+         # Check if CI was found, if not, create it
+         if [ -z "$ci_sys_id" ] || [ "$ci_sys_id" == "null" ]; then
+           echo "CI not found. Creating a new CI for $SERVICE_NAME..."
+           # Create the CI if it doesn't exist
            create_ci_response=$(curl -s -X POST \
-             "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/cmdb_ci" \
-             --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+             "https://$SN_INSTANCE/api/now/table/cmdb_ci" \
+             --user $SN_USER:$SN_PASS \
              --header "Content-Type: application/json" \
              --data '{
-               "name": "'${{ steps.get_service_name.outputs.service_name }}'",
+               "name": "'"$SERVICE_NAME"'",
                "category": "Application Service",
                "location": "AKS Cluster",
-               "app_service_name": "'${{ steps.get_service_name.outputs.service_name }}'"
+               "app_service_name": "'"$SERVICE_NAME"'"
              }')
+           # Extract the sys_id and name of the newly created CI
            ci_sys_id=$(echo $create_ci_response | jq -r '.result.sys_id')
            ci_name=$(echo $create_ci_response | jq -r '.result.name')
+           if [ "$ci_sys_id" == "null" ] || [ -z "$ci_sys_id" ]; then
+             echo "Error: Failed to create CI for $SERVICE_NAME. Response: $create_ci_response"
+             exit 1
+           else
+             echo "Successfully created CI: $ci_name with sys_id: $ci_sys_id"
+           fi
          else
-           echo "Microservice CI found with sys_id: $ci_sys_id"
+           echo "CI found: $ci_name with sys_id: $ci_sys_id"
          fi
+         # Set the output for the discovered or created CI
          echo "::set-output name=ci_sys_id::$ci_sys_id"
          echo "::set-output name=ci_name::$ci_name"
-
-     # Step 9: Print CMDB Item Details
+   # Step 9: Print CMDB Item Details
      - name: Print CMDB Item
        run: |
         echo "CMDB Item: ${{ steps.discover_ci.outputs.ci_name }} (sys_id: ${{ steps.discover_ci.outputs.ci_sys_id }})"
+   
  deploy:
    runs-on: ubuntu-latest
    needs: ci-management
