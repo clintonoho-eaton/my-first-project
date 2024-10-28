@@ -326,11 +326,12 @@ jobs:
            echo "Successfully created change request: $change_number"
            echo "::set-output name=change_number::$change_number"
          fi
-           # Print Change Request Number
-           - name: Print Change Request Number
-             run: |
-              echo "ServiceNow Change Request: ${{ steps.create_change.outputs.change_number }} (sys_id: ${{ steps.create_change.outputs.change_sys_id }})"        
-           
+     
+     # Print Change Request Number
+     - name: Print Change Request Number
+       run: |
+        echo "ServiceNow Change Request: ${{ steps.create_change.outputs.change_number }} (sys_id: ${{ steps.create_change.outputs.change_sys_id }})"        
+          
      # # Step 10: Close Standard Change Request after successful deployment
      # - name: Close ServiceNow Change Request
      #   run: |
