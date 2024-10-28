@@ -136,8 +136,8 @@ jobs:
        run: |
          # Define the ServiceNow instance and authentication
          SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
-         SN_USER="${{ env.SERVICENOW-USER }}"
-         SN_PASS="${{ env.SERVICENOW-PASSWORD }}"
+         SN_USER="${{ env.SERVICENOW_USER }}"
+         SN_PASS="${{ env.SERVICENOW_PASSWORD }}"
          SERVICE_NAME="${{ steps.get_service_name.outputs.service_name }}"
          # Discover the CI in ServiceNow
          echo "Attempting to discover CI with name: $SERVICE_NAME"
