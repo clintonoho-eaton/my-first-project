@@ -179,8 +179,8 @@ jobs:
            echo "CI found: $ci_name with sys_id: $ci_sys_id"
          fi
          # Set the output for the discovered or created CI
-         echo "::set-output name=ci_sys_id::$ci_sys_id"
-         echo "::set-output name=ci_name::$ci_name"
+         echo "ci_sys_id=$ci_sys_id" >> $GITHUB_ENV
+         echo "ci_name=$ci_name" >> $GITHUB_ENV
    # Step 9: Print CMDB Item Details
      - name: Print CMDB Item
        run: |
