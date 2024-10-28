@@ -39,10 +39,15 @@ on:
       aks_credentials:
         description: 'AKS Credential'
         type: string
-      change_template:
-        description: 'Change template sys_id'
+      change_model:
+        description: 'Change model sys_id'
         required: true
         type: string
+      std_chg_prod_ver:
+        description: 'standard change producer version'
+        required: true
+        type: string
+       
 
 jobs:
  build:
@@ -201,7 +206,8 @@ jobs:
         echo "AKS_CLUSTER_NAME=${{github.event.inputs.aks_cluster_name}}" >> $GITHUB_ENV
         echo "AKS_RESOURCE_GROUP=${{github.event.inputs.aks_resource_group}}" >> $GITHUB_ENV
         echo "AKS_CREDENTIALS=${{github.event.inputs.aks_credentials}}" >> $GITHUB_ENV
-        echo "CHANGE_TEMPLATE=${{github.event.inputs.change_template}}" >> $GITHUB_ENV
+        echo "CHANGE_MODEL=${{github.event.inputs.change_model}}" >> $GITHUB_ENV
+        echo "STD_CHG_PROD_VER=${{github.event.inputs.std_chg_prod_ver}}" >> $GITHUB_ENV
         
      # Step 9: Create Standard Change Request in ServiceNow with the Microservice CI
      - name: Create Standard Change Request in ServiceNow
@@ -216,10 +222,20 @@ jobs:
              "description": "Standard change for deploying '${{ steps.get_service_name.outputs.service_name }}' microservice to AKS using pre-approved template.",
              "category": "Software",
              "type": "Standard",
-             "change_template": "${{env.CHANGE_TEMPLATE}}",
+             "change_model": "${{env.CHANGE_MODEL}}",
+             "std_change_producer_version": "${{env.STD_CHG_PROD_VER}}",  # Standard Change Producer Version ID
              "cmdb_ci": "'${{ needs.ci-management.outputs.ci_sys_id }}'"
            }')
-         echo $change_request | jq '.result.sys_id' > change_request_id.txt
+         change_number=$(echo $change_request | jq -r '.result.number')
+         change_sys_id=$(echo $change_request | jq -r '.result.sys_id')
+         echo "::set-output name=change_number::$change_number"
+         echo "::set-output name=change_sys_id::$change_sys_id"
+     
+     # Print Change Request Number
+     - name: Print Change Request Number
+       run: |
+        echo "ServiceNow Change Request: ${{ steps.create_change.outputs.change_number }} (sys_id: ${{ steps.create_change.outputs.change_sys_id }})"        
+     
      # Step 10: Close Standard Change Request after successful deployment
      - name: Close ServiceNow Change Request
        run: |
