@@ -236,16 +236,16 @@ jobs:
        run: |
         echo "ServiceNow Change Request: ${{ steps.create_change.outputs.change_number }} (sys_id: ${{ steps.create_change.outputs.change_sys_id }})"        
      
-     # Step 10: Close Standard Change Request after successful deployment
-     - name: Close ServiceNow Change Request
-       run: |
-         change_id=$(cat change_request_id.txt)
-         curl -X PATCH \
-           "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/change_request/$change_id" \
-           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
-           --header "Content-Type: application/json" \
-           --data '{
-             "state": "Closed",
-             "close_code": "Successful",
-             "close_notes": "Deployment of '${{ steps.get_service_name.outputs.service_name }}' to AKS completed successfully"
-           }'
+     # # Step 10: Close Standard Change Request after successful deployment
+     # - name: Close ServiceNow Change Request
+     #   run: |
+     #     change_id=${{ steps.create_change.outputs.change_number }}
+     #     curl -X PATCH \
+     #       "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/change_request/$change_id" \
+     #       --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+     #       --header "Content-Type: application/json" \
+     #       --data '{
+     #         "state": "Closed",
+     #         "close_code": "Successful",
+     #         "close_notes": "Deployment of '${{ steps.get_service_name.outputs.service_name }}' to AKS completed successfully"
+     #       }'
