@@ -111,6 +111,9 @@ jobs:
  ci-management:
    runs-on: ubuntu-latest
    needs: build
+   outputs:
+    ci_sys_id: ${{steps.set-output.outputs.ci_sys_id}}
+    
    steps:
      - name: Set environment variables
        run: |
