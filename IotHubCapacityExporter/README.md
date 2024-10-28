@@ -36,40 +36,6 @@ It is recommended to store sensitive information such as `DYNATRACE_TOKEN`, `AZU
 
 1. **Clone the repository:**
 
-    # IoTHubCapacityExporter
-
-## Overview
-
-The `IoTHubCapacityExporter` is an Azure Function that retrieves IoT Hub capacity metrics and posts them to Dynatrace for monitoring. This function is designed to run in the In-Process model of Azure Functions.
-
-## Features
-
-- Retrieves IoT Hub capacity metrics from Azure.
-- Posts capacity metrics to Dynatrace.
-- Validates Azure AD tokens to ensure secure access.
-
-## Prerequisites
-
-- Azure Subscription
-- Dynatrace Account
-- Azure Function App
-- Azure AD App Registration
-
-## Environment Variables
-
-The function relies on the following environment variables:
-
-- `DYNATRACE_URL`: The URL of your Dynatrace environment.
-- `DYNATRACE_TOKEN`: The API token for accessing Dynatrace.
-- `AZURE_TENANT_ID`: The Azure AD tenant ID.
-- `AZURE_CLIENT_ID`: The client ID of the Azure AD app registration.
-- `AZURE_CLIENT_SECRET`: The client secret of the Azure AD app registration.
-- `AZURE_SUBSCRIPTION_ID`: The Azure subscription ID.
-
-## Setup
-
-1. **Clone the repository:**
-
     git clone https://github.com/your-repo/IoTHubCapacityExporter.git
     cd IoTHubCapacityExporter
 
