@@ -146,7 +146,7 @@ jobs:
          echo "Attempting to discover CI with name: $SERVICE_NAME"
          ci_response=$(curl -s -X GET \
            "https://$SN_INSTANCE/api/now/table/cmdb_ci?sysparm_query=name=$SERVICE_NAME" \
-           --header "Authorization: Basic $auth_header" \
+           --user '$SN_USER':'$SN_PASS' \
            --header "Accept: application/json")
          # Extract sys_id and name if the CI exists
          ci_sys_id=$(echo $ci_response | jq -r '.result[0].sys_id')
@@ -158,7 +158,7 @@ jobs:
            # Create the CI if it doesn't exist
            create_ci_response=$(curl -s -X POST \
              "https://$SN_INSTANCE/api/now/table/cmdb_ci" \
-             --header "Authorization: Basic $auth_header" \
+             --user '$SN_USER':'$SN_PASS' \
              --header "Content-Type: application/json" \
              --data '{
                "name": "'"$SERVICE_NAME"'",
