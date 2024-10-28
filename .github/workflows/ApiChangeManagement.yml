@@ -139,22 +139,26 @@ jobs:
          SN_USER="${{ env.SERVICENOW_USER }}"
          SN_PASS="${{ env.SERVICENOW_PASSWORD }}"
          SERVICE_NAME="${{ steps.get_service_name.outputs.service_name }}"
+         # Encode username and password for Basic Auth
+         auth_header=$(echo -n "${{ env.SERVICENOW-USER }}:${{ env.SERVICENOW-PASSWORD }}" | base64)
+         
          # Discover the CI in ServiceNow
          echo "Attempting to discover CI with name: $SERVICE_NAME"
          ci_response=$(curl -s -X GET \
            "https://$SN_INSTANCE/api/now/table/cmdb_ci?sysparm_query=name=$SERVICE_NAME" \
-           --user $SN_USER:$SN_PASS \
+           --header "Authorization: Basic $auth_header" \
            --header "Accept: application/json")
          # Extract sys_id and name if the CI exists
          ci_sys_id=$(echo $ci_response | jq -r '.result[0].sys_id')
          ci_name=$(echo $ci_response | jq -r '.result[0].name')
+         
          # Check if CI was found, if not, create it
          if [ -z "$ci_sys_id" ] || [ "$ci_sys_id" == "null" ]; then
            echo "CI not found. Creating a new CI for $SERVICE_NAME..."
            # Create the CI if it doesn't exist
            create_ci_response=$(curl -s -X POST \
              "https://$SN_INSTANCE/api/now/table/cmdb_ci" \
-             --user $SN_USER:$SN_PASS \
+             --header "Authorization: Basic $auth_header" \
              --header "Content-Type: application/json" \
              --data '{
                "name": "'"$SERVICE_NAME"'",
