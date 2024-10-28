@@ -124,6 +124,12 @@ jobs:
         echo "AKS_CLUSTER_NAME=${{github.event.inputs.aks_cluster_name}}" >> $GITHUB_ENV
         echo "AKS_RESOURCE_GROUP=${{github.event.inputs.aks_resource_group}}" >> $GITHUB_ENV
         echo "AKS_CREDENTIALS=${{github.event.inputs.aks_credentials}}" >> $GITHUB_ENV    
+
+     # Extract parent folder name (microservice name)
+     - name: Get microservice name (parent folder name)
+       id: get_service_name
+       run: echo "::set-output name=service_name::$(basename $(pwd))"
+       
      # Step 6: Discover or Create Microservice CI in ServiceNow using the service name
      - name: Discover or Create CI for Microservice in ServiceNow
        id: discover_ci
@@ -175,6 +181,12 @@ jobs:
         echo "AKS_CLUSTER_NAME=${{github.event.inputs.aks_cluster_name}}" >> $GITHUB_ENV
         echo "AKS_RESOURCE_GROUP=${{github.event.inputs.aks_resource_group}}" >> $GITHUB_ENV
         echo "AKS_CREDENTIALS=${{github.event.inputs.aks_credentials}}" >> $GITHUB_ENV    
+        
+     # Extract parent folder name (microservice name)
+     - name: Get microservice name (parent folder name)
+       id: get_service_name
+       run: echo "::set-output name=service_name::$(basename $(pwd))"
+       
      # Step 7: Set AKS context
      #- name: Set AKS context
      #  uses: azure/aks-set-context@v2
