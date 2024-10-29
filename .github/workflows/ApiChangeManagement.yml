@@ -1,4 +1,4 @@
-name: Build and Deploy to AKS with GitHub Packages and Dynamic CI Management
+name: Proactive Change Management
 
 on:
  workflow_dispatch:
@@ -188,43 +188,6 @@ jobs:
      - name: Print CMDB Item
        run: |
         echo "CMDB Item: ${{ steps.discover_ci.outputs.ci_name }} (sys_id: ${{ steps.discover_ci.outputs.ci_sys_id }})"
-   
- deploy:
-   runs-on: ubuntu-latest
-   needs: ci-management
-   steps:
-
-     - name: Set environment variables
-       run: |
-        echo "AZURE_CLIENT_ID=${{ github.event.inputs.azure_client_id }}" >> $GITHUB_ENV
-        echo "AZURE_CLIENT_SECRET=${{ github.event.inputs.azure_client_secret }}" >> $GITHUB_ENV
-        echo "AZURE_TENANT_ID=${{ github.event.inputs.azure_tenant_id }}" >> $GITHUB_ENV
-        echo "AZURE_SUBSCRIPTION_ID=${{ github.event.inputs.azure_subscription_id }}" >> $GITHUB_ENV
-        echo "SERVICENOW_INSTANCE=${{ github.event.inputs.servicenow_instance }}" >> $GITHUB_ENV
-        echo "MICROSERVICE_NAME=${{ github.event.inputs.microservice_name }}" >> $GITHUB_ENV
-        echo "RESOURCE_GROUP=${{ github.event.inputs.RESOURCE_GROUP }}" >> $GITHUB_ENV
-        echo "AKS_CLUSTER_NAME=${{github.event.inputs.aks_cluster_name}}" >> $GITHUB_ENV
-        echo "AKS_RESOURCE_GROUP=${{github.event.inputs.aks_resource_group}}" >> $GITHUB_ENV
-        echo "AKS_CREDENTIALS=${{github.event.inputs.aks_credentials}}" >> $GITHUB_ENV    
-        
-     # Extract parent folder name (microservice name)
-     - name: Get microservice name (parent folder name)
-       id: get_service_name
-       run: echo "::set-output name=service_name::$(basename $(pwd))"
-       
-     # Step 7: Set AKS context
-     #- name: Set AKS context
-     #  uses: azure/aks-set-context@v2
-     #  with:
-     #    resource-group: ${{ env.AKS_RESOURCE_GROUP }}
-     #    cluster-name: ${{ env.AKS_CLUSTER_NAME }}
-     #    credentials-file: ${{ secrets.AKS_CREDENTIALS }}
-     # Step 8: Deploy to AKS using Docker image from GitHub Packages
-     - name: Deploy to AKS
-       run: |
-         # kubectl set image deployment/${{ steps.get_service_name.outputs.service_name }} ${{ steps.get_service_name.outputs.service_name }}= ghcr.io /${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }}
-         # kubectl rollout status deployment/${{ steps.get_service_name.outputs.service_name }}
-         echo "deployment successfull"
  
  change-request:
    runs-on: ubuntu-latest
@@ -251,38 +214,6 @@ jobs:
        id: get_service_name
        run: echo "::set-output name=service_name::$(basename $(pwd))"
        
-     # - name: Create Standard Change Request in ServiceNow from Pre-Approved Change Model
-     #   id: create_change
-     #   run: |
-     #     SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
-     #     SERVICE_NAME="${{ steps.get_service_name.outputs.service_name }}"
-     #     CMDB_CI="${{ needs.ci-management.outputs.ci_sys_id }}"
-     #     # Attempt to create a change request using the change model
-     #     echo "Creating a change request for $SERVICE_NAME using change model and standard template..."
-     #     change_request=$(curl -s -X POST \
-     #       "https://$SN_INSTANCE/api/now/table/change_request" \
-     #       --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
-     #       --header "Content-Type: application/json" \
-     #       --data '{
-     #         "short_description": "Deploy '"$SERVICE_NAME"' microservice to AKS",
-     #         "description": "Standard change for deploying '"$SERVICE_NAME"' microservice to AKS using a pre-approved change model.",
-     #         "category": "Software",
-     #         "type": "standard",                             # Explicitly set type to standard
-     #         "chg_model": "${{env.CHANGE_MODEL}}",  # Use Change Model ID
-     #         "std_change_producer_version": "${{env.STD_CHG_PROD_VER}}", # Standard Change Producer Version ID
-     #         "cmdb_ci": "'"$CMDB_CI"'"
-     #       }')
-     #     # Extract and print the change request number for debugging
-     #     change_number=$(echo $change_request | jq -r '.result.number')
-     #     change_sys_id=$(echo $change_request | jq -r '.result.sys_id')
-     #     if [ "$change_number" == "null" ] || [ -z "$change_number" ]; then
-     #       echo "Error: Failed to create change request. Response: $change_request"
-     #       exit 1
-     #     else
-     #       echo "Successfully created change request: $change_number with sys_id: $change_sys_id"
-     #       echo "::set-output name=change_number::$change_number"
-     #       echo "::set-output name=change_sys_id::$change_sys_id"
-     #     fi
      - name: Create Standard Change Request in ServiceNow
        id: create_change
        run: |
@@ -330,7 +261,46 @@ jobs:
      # Print Change Request Number
      - name: Print Change Request Number
        run: |
-        echo "ServiceNow Change Request: ${{ steps.create_change.outputs.change_number }} (sys_id: ${{ steps.create_change.outputs.change_sys_id }})"        
+        echo "ServiceNow Change Request: ${{ steps.create_change.outputs.change_number }} (sys_id: ${{ steps.create_change.outputs.change_sys_id }})"           
+ 
+ deploy:
+   runs-on: ubuntu-latest
+   needs: ci-management
+   steps:
+
+     - name: Set environment variables
+       run: |
+        echo "AZURE_CLIENT_ID=${{ github.event.inputs.azure_client_id }}" >> $GITHUB_ENV
+        echo "AZURE_CLIENT_SECRET=${{ github.event.inputs.azure_client_secret }}" >> $GITHUB_ENV
+        echo "AZURE_TENANT_ID=${{ github.event.inputs.azure_tenant_id }}" >> $GITHUB_ENV
+        echo "AZURE_SUBSCRIPTION_ID=${{ github.event.inputs.azure_subscription_id }}" >> $GITHUB_ENV
+        echo "SERVICENOW_INSTANCE=${{ github.event.inputs.servicenow_instance }}" >> $GITHUB_ENV
+        echo "MICROSERVICE_NAME=${{ github.event.inputs.microservice_name }}" >> $GITHUB_ENV
+        echo "RESOURCE_GROUP=${{ github.event.inputs.RESOURCE_GROUP }}" >> $GITHUB_ENV
+        echo "AKS_CLUSTER_NAME=${{github.event.inputs.aks_cluster_name}}" >> $GITHUB_ENV
+        echo "AKS_RESOURCE_GROUP=${{github.event.inputs.aks_resource_group}}" >> $GITHUB_ENV
+        echo "AKS_CREDENTIALS=${{github.event.inputs.aks_credentials}}" >> $GITHUB_ENV    
+        
+     # Extract parent folder name (microservice name)
+     - name: Get microservice name (parent folder name)
+       id: get_service_name
+       run: echo "::set-output name=service_name::$(basename $(pwd))"
+       
+     # Step 7: Set AKS context
+     #- name: Set AKS context
+     #  uses: azure/aks-set-context@v2
+     #  with:
+     #    resource-group: ${{ env.AKS_RESOURCE_GROUP }}
+     #    cluster-name: ${{ env.AKS_CLUSTER_NAME }}
+     #    credentials-file: ${{ secrets.AKS_CREDENTIALS }}
+     # Step 8: Deploy to AKS using Docker image from GitHub Packages
+     - name: Deploy to AKS
+       run: |
+         # kubectl set image deployment/${{ steps.get_service_name.outputs.service_name }} ${{ steps.get_service_name.outputs.service_name }}= ghcr.io /${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }}
+         # kubectl rollout status deployment/${{ steps.get_service_name.outputs.service_name }}
+         echo "deployment successfull"
+ 
+
           
      # # Step 10: Close Standard Change Request after successful deployment
      # - name: Close ServiceNow Change Request
