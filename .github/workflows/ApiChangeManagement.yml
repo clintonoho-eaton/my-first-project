@@ -47,6 +47,11 @@ on:
         description: 'standard change producer version'
         required: true
         type: string
+      assing_group:
+      	description: 'standard change producer version'
+       	required: true
+	type: string
+        
 
 jobs:
  build:
