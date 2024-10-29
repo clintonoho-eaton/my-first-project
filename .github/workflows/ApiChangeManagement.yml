@@ -195,6 +195,7 @@ jobs:
    needs: ci-management
    outputs:
     change_number: ${{steps.create_change.outputs.change_number}}
+    change_sys_id: ${{steps.create_change.outputs.change_sys_id}}
    steps:
 
      - name: Set environment variables
@@ -254,12 +255,14 @@ jobs:
            --data "$json_payload")
          # Extract and print the change request number for debugging
          change_number=$(echo $change_request | jq -r '.result.number')
+         change_sys_id=$(echo $change_request | jq -r '.result.number')
          if [ "$change_number" == "null" ] || [ -z "$change_number" ]; then
            echo "Error: Failed to create change request. Response: $change_request"
            exit 1
          else
            echo "Successfully created change request: $change_number"
            echo "change_number=$change_number" >> $GITHUB_OUTPUT
+           echo "change_sys_id=$change_sys_id" >> $GITHUB_OUTPUT
          fi
      
      # Print Change Request Number
@@ -318,7 +321,7 @@ jobs:
      - name: Close ServiceNow Change Request
        if: ${{ success() && steps.aks_deployment.conclusion == 'success' }}
        run: |
-         change_id=${{ needs.change-request.outputs.change_number }}
+         change_id=${{ needs.change-request.outputs.change_sys_id }}
          curl -X PATCH \
            "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/change_request/$change_id" \
            --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
@@ -333,7 +336,7 @@ jobs:
      - name: Close Change Request - Rolled Back
        if: ${{ failure() && steps.aks_deployment.conclusion == 'failure' }}
        run: |
-         CHANGE_SYS_ID=${{ needs.change-request.outputs.change_number }}
+         CHANGE_SYS_ID=${{ needs.change-request.outputs.change_sys_id }}
          echo "Closing the change request $CHANGE_SYS_ID as rolled back..."
          # Construct JSON payload for closing the change request as rolled back
          json_payload=$(jq -n \
