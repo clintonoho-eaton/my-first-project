@@ -261,7 +261,7 @@ jobs:
        run: |
          SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
          SERVICE_NAME="${{ steps.get_service_name.outputs.service_name }}"
-         CHANGE_SYS_ID="${{ needs.ci-management.outputs.ci_sys_id }}"
+         CHANGE_SYS_ID="${{ steps.create_change.outputs.change_sys_id }}"
          echo "Moving the change request $CHANGE_SYS_ID to Scheduled state..."
          json_payload=$(jq -n --arg state "Scheduled" '{ state: $state }')
          
@@ -276,7 +276,7 @@ jobs:
        run: |
          SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
          SERVICE_NAME="${{ steps.get_service_name.outputs.service_name }}"
-         CHANGE_SYS_ID="${{ needs.ci-management.outputs.ci_sys_id }}"
+         CHANGE_SYS_ID="${{ steps.create_change.outputs.change_sys_id }}"
          echo "Moving the change request $CHANGE_SYS_ID to Implement state..."
          json_payload=$(jq -n --arg state "Implement" '{ state: $state }')
          curl -s -X PATCH \
@@ -330,7 +330,7 @@ jobs:
        run: |
          SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
          SERVICE_NAME="${{ steps.get_service_name.outputs.service_name }}"
-         CHANGE_SYS_ID="${{ needs.ci-management.outputs.ci_sys_id }}"
+         CHANGE_SYS_ID="${{ needs.change-request.outputs.change_sys_id }}"
          echo "Moving the change request $CHANGE_SYS_ID to Review state..."
          json_payload=$(jq -n --arg state "Review" '{ state: $state }')
          curl -s -X PATCH \
