@@ -47,8 +47,11 @@ on:
         description: 'standard change producer version'
         required: true
         type: string
-       
-
+      assign_group:
+   		   description: 'ServiceNow assignment group'
+   		   required: true
+   		   type: string
+   	  
 jobs:
  build:
    runs-on: ubuntu-latest
@@ -212,13 +215,37 @@ jobs:
         echo "AKS_CREDENTIALS=${{github.event.inputs.aks_credentials}}" >> $GITHUB_ENV
         echo "CHANGE_MODEL=${{github.event.inputs.change_model}}" >> $GITHUB_ENV
         echo "STD_CHG_PROD_VER=${{github.event.inputs.std_chg_prod_ver}}" >> $GITHUB_ENV
+		echo "ASSIGNMENT_GROUP=${{github.event.inputs.assign_grp}}" >> $GITHUB_ENV
         
      # Extract parent folder name (microservice name)
      - name: Get microservice name (parent folder name)
        id: get_service_name
        run: echo "::set-output name=service_name::$(basename $(pwd))"
 
-     # Step 1: Create standard change request based on existing change template for brightlayer.  
+	 # Step 1: Retrieve First Member of Assignment Group
+     - name: Get First Member of Assignment Group
+       id: get_assigned_to
+       run: |
+         SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+         SERVICE_NAME="${{ steps.get_service_name.outputs.service_name }}"
+         ASSIGNMENT_GROUP="your_assignment_group_sys_id"  # replace with actual assignment group sys_id
+         echo "Fetching first member of assignment group $ASSIGNMENT_GROUP..."
+         # Query ServiceNow for users in the assignment group
+         group_members=$(curl -s -X GET \
+           "https://$SN_INSTANCE/api/now/table/sys_user_grmember?sysparm_query=group=$ASSIGNMENT_GROUP" \
+           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           --header "Content-Type: application/json")
+         # Extract the sys_id of the first member
+         assigned_to=$(echo $group_members | jq -r '.result[0].user.sys_id')
+         if [ -z "$assigned_to" ] || [ "$assigned_to" == "null" ]; then
+           echo "Error: No members found in the assignment group."
+           exit 1
+         else
+           echo "Assigned to user sys_id: $assigned_to"
+           echo "::set-output name=assigned_to::$assigned_to"
+         fi
+	 
+     # Step 2: Create standard change request based on existing change template for brightlayer.  
      - name: Create Standard Change Request in ServiceNow
        id: create_change
        run: |
@@ -227,8 +254,14 @@ jobs:
          CMDB_CI="${{ needs.ci-management.outputs.ci_sys_id }}"
          chg_model_tmp="${{env.CHANGE_MODEL}}"
          std_chg_ver="${{env.STD_CHG_PROD_VER}}"
+		 
+		 # Get current date and time in YYYY-MM-DD HH:MM:SS format
+         PLANNED_START=$(date +"%Y-%m-%d %H:%M:%S")
+         PLANNED_END=$(date -d "$PLANNED_START + 1 hour" +"%Y-%m-%d %H:%M:%S")
+         ASSIGNED_TO="${{ steps.get_assigned_to.outputs.assigned_to }}"
          
          echo "Creating a change request for $SERVICE_NAME with CI sys_id: $CMDB_CI..."
+		 
          # Construct JSON payload with jq
          json_payload=$(jq -n \
            --arg short_description "Deploy $SERVICE_NAME microservice to AKS" \
@@ -238,6 +271,9 @@ jobs:
            --arg chg_model "$chg_model_tmp" \
            --arg std_change_producer_version "$std_chg_ver" \
            --arg cmdb_ci "$CMDB_CI" \
+		   --arg planned_start "$PLANNED_START" \
+           --arg planned_end "$PLANNED_END" \
+           --arg assigned_to "$ASSIGNED_TO" \
            '{
              short_description: $short_description,
              description: $description,
@@ -245,8 +281,12 @@ jobs:
              type: $type,
              chg_model: $chg_model,
              std_change_producer_version: $std_change_producer_version,
-             cmdb_ci: $cmdb_ci
+             cmdb_ci: $cmdb_ci,
+			 planned_start_date: $planned_start,
+             planned_end_date: $planned_end,
+             assigned_to: $assigned_to
            }')
+		   
          # Make the API call
          change_request=$(curl -s -X POST \
            "https://$SN_INSTANCE/api/now/table/change_request" \
@@ -264,6 +304,32 @@ jobs:
            echo "change_number=$change_number" >> $GITHUB_OUTPUT
            echo "change_sys_id=$change_sys_id" >> $GITHUB_OUTPUT
          fi
+     # Step 3: Move to Scheduled State
+     - name: Move Change Request to Scheduled
+       run: |
+         SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+         SERVICE_NAME="${{ steps.get_service_name.outputs.service_name }}"
+		 CHANGE_SYS_ID="${{ needs.ci-management.outputs.ci_sys_id }}"
+         echo "Moving the change request $CHANGE_SYS_ID to Scheduled state..."
+         json_payload=$(jq -n --arg state "Scheduled" '{ state: $state }')
+         curl -s -X PATCH \
+           "https://$SN_INSTANCE/api/now/table/change_request/$CHANGE_SYS_ID" \
+           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           --header "Content-Type: application/json" \
+           --data "$json_payload"
+     # Step 4: Move to Implement State
+     - name: Move Change Request to Implement
+       run: |
+         SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+         SERVICE_NAME="${{ steps.get_service_name.outputs.service_name }}"
+		 CHANGE_SYS_ID="${{ needs.ci-management.outputs.ci_sys_id }}"
+         echo "Moving the change request $CHANGE_SYS_ID to Implement state..."
+         json_payload=$(jq -n --arg state "Implement" '{ state: $state }')
+         curl -s -X PATCH \
+           "https://$SN_INSTANCE/api/now/table/change_request/$CHANGE_SYS_ID" \
+           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           --header "Content-Type: application/json" \
+           --data "$json_payload"     
      
      # Print Change Request Number
      - name: Print Change Request Number
@@ -316,41 +382,56 @@ jobs:
          echo "Deployment failed, executing rollback..."
          # Rollback command (replace with your actual rollback command)
          # kubectl rollout undo -f deployment.yaml  # replace with actual rollback command
-          
-     # Step 3: Conditionally close the change request if deployment is successful
-     - name: Close ServiceNow Change Request
+
+     # Move Change Request to Review State
+     - name: Move Change Request to Review
        if: ${{ success() && steps.aks_deployment.conclusion == 'success' }}
        run: |
-         change_id=${{ needs.change-request.outputs.change_sys_id }}
-         curl -X PATCH \
-           "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/change_request/$change_id" \
+         SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+         SERVICE_NAME="${{ steps.get_service_name.outputs.service_name }}"
+		 CHANGE_SYS_ID="${{ needs.ci-management.outputs.ci_sys_id }}"
+         echo "Moving the change request $CHANGE_SYS_ID to Review state..."
+         json_payload=$(jq -n --arg state "Review" '{ state: $state }')
+         curl -s -X PATCH \
+           "https://$SN_INSTANCE/api/now/table/change_request/$CHANGE_SYS_ID" \
            --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
            --header "Content-Type: application/json" \
-           --data '{
-             "state": "Closed",
-             "close_code": "Successful",
-             "close_notes": "Deployment of '${{ steps.get_service_name.outputs.service_name }}' to AKS completed successfully"
-           }'
+           --data "$json_payload"		 
+          
+     # Step 3: Conditionally close the change request if deployment is successful
+     #- name: Close ServiceNow Change Request
+     #  if: ${{ success() && steps.aks_deployment.conclusion == 'success' }}
+     #  run: |
+     #    change_id=${{ needs.change-request.outputs.change_sys_id }}
+     #    curl -X PATCH \
+     #      "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/change_request/$change_id" \
+     #      --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+     #      --header "Content-Type: application/json" \
+     #      --data '{
+     #        "state": "Closed",
+     #        "close_code": "Successful",
+     #        "close_notes": "Deployment of '${{ steps.get_service_name.outputs.service_name }}' to AKS completed successfully"
+     #      }'
 
      # Step 4: Conditionally close the change request if rollback was executed
-     - name: Close Change Request - Rolled Back
-       if: ${{ failure() && steps.aks_deployment.conclusion == 'failure' }}
-       run: |
-         CHANGE_SYS_ID=${{ needs.change-request.outputs.change_sys_id }}
-         echo "Closing the change request $CHANGE_SYS_ID as rolled back..."
-         # Construct JSON payload for closing the change request as rolled back
-         json_payload=$(jq -n \
-           --arg state "Closed" \
-           --arg close_code "Rolled Back" \
-           --arg close_notes "Deployment to AKS failed. Rolled back the changes." \
-           '{
-             state: $state,
-             close_code: $close_code,
-             close_notes: $close_notes
-           }')
-         # Close the change request
-         curl -s -X PATCH \
-           "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/change_request/$CHANGE_SYS_ID" \
-           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
-           --header "Content-Type: application/json" \
-           --data "$json_payload"
+     #- name: Close Change Request - Rolled Back
+     #  if: ${{ failure() && steps.aks_deployment.conclusion == 'failure' }}
+     #  run: |
+     #    CHANGE_SYS_ID=${{ needs.change-request.outputs.change_sys_id }}
+     #    echo "Closing the change request $CHANGE_SYS_ID as rolled back..."
+     #    # Construct JSON payload for closing the change request as rolled back
+     #    json_payload=$(jq -n \
+     #      --arg state "Closed" \
+     #      --arg close_code "Rolled Back" \
+     #      --arg close_notes "Deployment to AKS failed. Rolled back the changes." \
+     #      '{
+     #        state: $state,
+     #        close_code: $close_code,
+     #        close_notes: $close_notes
+     #      }')
+     #    # Close the change request
+     #    curl -s -X PATCH \
+     #      "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/change_request/$CHANGE_SYS_ID" \
+     #      --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+     #      --header "Content-Type: application/json" \
+     #      --data "$json_payload"
