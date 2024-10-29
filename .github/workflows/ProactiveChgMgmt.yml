@@ -186,7 +186,7 @@ jobs:
            --header "Content-Type: application/json")
 
          # Extract the sys_id of the first member
-         assigned_to=$(echo $group_members | jq -r '.result[0].user.sys_id')
+         assigned_to=$(echo $group_members | jq -r '.result[0].user.value')
          if [ -z "$assigned_to" ] || [ "$assigned_to" == "null" ]; then
            echo "Error: No members found in the assignment group."
            exit 1
