@@ -47,11 +47,7 @@ on:
         description: 'standard change producer version'
         required: true
         type: string
-      assign_group:
-   		   description: 'ServiceNow assignment group'
-   		   required: true
-   		   type: string
-   	  
+
 jobs:
  build:
    runs-on: ubuntu-latest
