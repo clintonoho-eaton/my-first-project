@@ -313,7 +313,7 @@ jobs:
           
      # Step 3: Conditionally close the change request if deployment is successful
      - name: Close ServiceNow Change Request
-       if: ${{ success() && steps.deployment.conclusion == 'success' }}
+       if: ${{ success() && steps.deploy.conclusion == 'success' }}
        run: |
          change_id=${{ steps.create_change.outputs.change_number }}
          curl -X PATCH \
@@ -328,7 +328,7 @@ jobs:
 
      # Step 4: Conditionally close the change request if rollback was executed
      - name: Close Change Request - Rolled Back
-       if: ${{ failure() && steps.deployment.conclusion == 'failure' }}
+       if: ${{ failure() && steps.deploy.conclusion == 'failure' }}
        run: |
          CHANGE_SYS_ID=${{ steps.create_change.outputs.change_number }}
          echo "Closing the change request $CHANGE_SYS_ID as rolled back..."
