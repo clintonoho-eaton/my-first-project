@@ -255,7 +255,7 @@ jobs:
            --data "$json_payload")
          # Extract and print the change request number for debugging
          change_number=$(echo $change_request | jq -r '.result.number')
-         change_sys_id=$(echo $change_request | jq -r '.result.number')
+         change_sys_id=$(echo $change_request | jq -r '.result.sys_id')
          if [ "$change_number" == "null" ] || [ -z "$change_number" ]; then
            echo "Error: Failed to create change request. Response: $change_request"
            exit 1
