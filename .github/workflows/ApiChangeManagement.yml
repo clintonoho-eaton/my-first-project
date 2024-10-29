@@ -194,7 +194,7 @@ jobs:
    runs-on: ubuntu-latest
    needs: ci-management
    outputs:
-    ci_sys_id: ${{steps.create_change.outputs.change_number}}
+    change_number: ${{steps.create_change.outputs.change_number}}
    steps:
 
      - name: Set environment variables
@@ -318,7 +318,7 @@ jobs:
      - name: Close ServiceNow Change Request
        if: ${{ success() && steps.aks_deployment.conclusion == 'success' }}
        run: |
-         change_id=${{ steps.create_change.outputs.change_number }}
+         change_id=${{ needs.change-request.outputs.change_number }}
          curl -X PATCH \
            "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/change_request/$change_id" \
            --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
@@ -333,7 +333,7 @@ jobs:
      - name: Close Change Request - Rolled Back
        if: ${{ failure() && steps.aks_deployment.conclusion == 'failure' }}
        run: |
-         CHANGE_SYS_ID=${{ steps.create_change.outputs.change_number }}
+         CHANGE_SYS_ID=${{ needs.change-request.outputs.change_number }}
          echo "Closing the change request $CHANGE_SYS_ID as rolled back..."
          # Construct JSON payload for closing the change request as rolled back
          json_payload=$(jq -n \
