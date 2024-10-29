@@ -133,7 +133,7 @@ jobs:
        id: get_service_name
        run: echo "::set-output name=service_name::$(basename $(pwd))"
        
-     # Step 8: Discover or Create Microservice CI in ServiceNow using the service name
+     # Step 1: Discover or Create Microservice CI in ServiceNow using the service name
      - name: Discover or Create CI for Microservice in ServiceNow
        id: discover_ci
        run: |
@@ -184,7 +184,8 @@ jobs:
          # Set the output for the discovered or created CI
          echo "ci_sys_id=$ci_sys_id" >> $GITHUB_OUTPUT
          echo "ci_name=$ci_name" >> $GITHUB_OUTPUT
-   # Step 9: Print CMDB Item Details
+     
+     # Step 2: Print CMDB Item Details
      - name: Print CMDB Item
        run: |
         echo "CMDB Item: ${{ steps.discover_ci.outputs.ci_name }} (sys_id: ${{ steps.discover_ci.outputs.ci_sys_id }})"
@@ -213,7 +214,8 @@ jobs:
      - name: Get microservice name (parent folder name)
        id: get_service_name
        run: echo "::set-output name=service_name::$(basename $(pwd))"
-       
+
+     # Step 1: Create standard change request based on existing change template for brightlayer.  
      - name: Create Standard Change Request in ServiceNow
        id: create_change
        run: |
@@ -286,32 +288,63 @@ jobs:
        id: get_service_name
        run: echo "::set-output name=service_name::$(basename $(pwd))"
        
-     # Step 7: Set AKS context
+     # Step 0: Set AKS context
      #- name: Set AKS context
      #  uses: azure/aks-set-context@v2
      #  with:
      #    resource-group: ${{ env.AKS_RESOURCE_GROUP }}
      #    cluster-name: ${{ env.AKS_CLUSTER_NAME }}
      #    credentials-file: ${{ secrets.AKS_CREDENTIALS }}
-     # Step 8: Deploy to AKS using Docker image from GitHub Packages
+     
+     # Step 1: Deploy to AKS using Docker image from GitHub Packages
      - name: Deploy to AKS
        run: |
          # kubectl set image deployment/${{ steps.get_service_name.outputs.service_name }} ${{ steps.get_service_name.outputs.service_name }}= ghcr.io /${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }}
          # kubectl rollout status deployment/${{ steps.get_service_name.outputs.service_name }}
          echo "deployment successfull"
  
-
+    # Step 2: Rollback step, runs only if deployment fails
+     - name: Rollback Deployment
+       if: ${{ failure() }}
+       run: |
+         echo "Deployment failed, executing rollback..."
+         # Rollback command (replace with your actual rollback command)
+         # kubectl rollout undo -f deployment.yaml  # replace with actual rollback command
           
-     # # Step 10: Close Standard Change Request after successful deployment
-     # - name: Close ServiceNow Change Request
-     #   run: |
-     #     change_id=${{ steps.create_change.outputs.change_number }}
-     #     curl -X PATCH \
-     #       "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/change_request/$change_id" \
-     #       --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
-     #       --header "Content-Type: application/json" \
-     #       --data '{
-     #         "state": "Closed",
-     #         "close_code": "Successful",
-     #         "close_notes": "Deployment of '${{ steps.get_service_name.outputs.service_name }}' to AKS completed successfully"
-     #       }'
+     # Step 3: Conditionally close the change request if deployment is successful
+     - name: Close ServiceNow Change Request
+       if: ${{ success() && steps.deployment.conclusion == 'success' }}
+       run: |
+         change_id=${{ steps.create_change.outputs.change_number }}
+         curl -X PATCH \
+           "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/change_request/$change_id" \
+           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           --header "Content-Type: application/json" \
+           --data '{
+             "state": "Closed",
+             "close_code": "Successful",
+             "close_notes": "Deployment of '${{ steps.get_service_name.outputs.service_name }}' to AKS completed successfully"
+           }'
+
+     # Step 4: Conditionally close the change request if rollback was executed
+     - name: Close Change Request - Rolled Back
+       if: ${{ failure() && steps.deployment.conclusion == 'failure' }}
+       run: |
+         CHANGE_SYS_ID=${{ steps.create_change.outputs.change_number }}
+         echo "Closing the change request $CHANGE_SYS_ID as rolled back..."
+         # Construct JSON payload for closing the change request as rolled back
+         json_payload=$(jq -n \
+           --arg state "Closed" \
+           --arg close_code "Rolled Back" \
+           --arg close_notes "Deployment to AKS failed. Rolled back the changes." \
+           '{
+             state: $state,
+             close_code: $close_code,
+             close_notes: $close_notes
+           }')
+         # Close the change request
+         curl -s -X PATCH \
+           "https://${{ env.SERVICENOW_INSTANCE }}.service-now.com/api/now/table/change_request/$CHANGE_SYS_ID" \
+           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           --header "Content-Type: application/json" \
+           --data "$json_payload"
