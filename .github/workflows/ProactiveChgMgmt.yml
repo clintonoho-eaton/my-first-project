@@ -281,7 +281,7 @@ jobs:
            }')
          
          curl -s -X PATCH \
-           "https://$SN_INSTANCE/api/now/table/change_request/$CHANGE_SYS_ID" \\
+           "https://$SN_INSTANCE/api/now/table/change_request/$CHANGE_SYS_ID" \
            --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
            --header "Content-Type: application/json" \
            --data "$json_payload"
