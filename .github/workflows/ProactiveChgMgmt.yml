@@ -266,24 +266,26 @@ jobs:
          PLANNED_START=$(date +"%Y-%m-%d %H:%M:%S")
          PLANNED_END=$(date +"%Y-%m-%d %H:%M:%S")
          echo "Moving the change request $CHANGE_SYS_ID to Scheduled state..."
-         # Corrected JSON payload with commas between key-value pairs
+
+         # Construct JSON payload with jq
          json_payload=$(jq -n \
-         --arg state "Scheduled" \
-         --arg planned_start "$PLANNED_START" \
-         --arg planned_end "$PLANNED_END" \
-         --arg assignment_group "$ASSIGNMENT_GRP" \
-         '{
-           state: $state,
-           planned_start_date: $planned_start,
-           planned_end_date: $planned_end,
-           assignment_group: $assignment_group
-         }')
+           --arg state "Scheduled" \
+           --arg planned_start "$PLANNED_START" \
+           --arg planned_end "$PLANNED_END" \
+           --arg assignment_group "$ASSIGNMENT_GRP" \
+           '{
+             state: $state,
+             planned_start_date: $planned_start,
+             planned_end_date: $planned_end,
+             assignment_group: $assignment_group
+           }')
          
          curl -s -X PATCH \
            "https://$SN_INSTANCE/api/now/table/change_request/$CHANGE_SYS_ID" \\
            --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
            --header "Content-Type: application/json" \
            --data "$json_payload"
+
 
      # Step 4: Move to Implement State
      - name: Move Change Request to Implement
