@@ -47,9 +47,9 @@ on:
         description: 'standard change producer version'
         required: true
         type: string
-      assing_group:
+      assign_group:
       	description: 'standard change producer version'
-       	required: true
+        required: true
 	type: string
         
 
@@ -216,14 +216,14 @@ jobs:
         echo "AKS_CREDENTIALS=${{github.event.inputs.aks_credentials}}" >> $GITHUB_ENV
         echo "CHANGE_MODEL=${{github.event.inputs.change_model}}" >> $GITHUB_ENV
         echo "STD_CHG_PROD_VER=${{github.event.inputs.std_chg_prod_ver}}" >> $GITHUB_ENV
-		echo "ASSIGNMENT_GROUP=${{github.event.inputs.assign_grp}}" >> $GITHUB_ENV
+	echo "ASSIGNMENT_GROUP=${{github.event.inputs.assign_group}}" >> $GITHUB_ENV
         
      # Extract parent folder name (microservice name)
      - name: Get microservice name (parent folder name)
        id: get_service_name
        run: echo "::set-output name=service_name::$(basename $(pwd))"
 
-	 # Step 1: Retrieve First Member of Assignment Group
+     # Step 1: Retrieve First Member of Assignment Group
      - name: Get First Member of Assignment Group
        id: get_assigned_to
        run: |
