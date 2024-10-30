@@ -88,7 +88,23 @@ jobs:
          echo "change analysis json output start..."
          cat change_analysis_output.json
          echo "change analysis json output end..."
-         changes=$(jq '.changes' change_analysis_output.json)
+         changes=$(jq '[.[] | {
+             "Change ID": .id,
+             "Resource ID": .properties.resourceId,
+             "Change Type": .properties.changeType,
+             "Change Timestamp": .properties.timeStamp,
+             "Property Changes": [
+                 .properties.propertyChanges[] | {
+                     "Category": .changeCategory,
+                     "Type": .changeType,
+                     "Display Name": .displayName,
+                     "Description": .description,
+                     "Old Value": .oldValue,
+                     "New Value": .newValue
+                 }
+             ]
+          }]' change_analysis_output.json)
+
          echo "::set-output name=changes::$changes"
     # Step 4: Get Azure App Service Deployment Logs
      - name: Get Azure App Service Deployment Logs
