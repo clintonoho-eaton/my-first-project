@@ -107,7 +107,7 @@ jobs:
              ]
           }]' change_analysis_output.json)
          echo  "$changes"
-         echo "::set-output name=changes::$changes"
+         echo "changes=$changes" >> $GITHUB_OUTPUT
     # Step 4: Get Azure App Service Deployment Logs
      - name: Get Azure App Service Deployment Logs
        id: deployment_logs
@@ -117,7 +117,7 @@ jobs:
      - name: Parse Deployment Logs
        id: parse_deployment
        run: |
-         deployments=$(jq '.' deployment_logs_output.json)
+         deployments=$(jq -c '.' deployment_logs_output.json)
          echo "$deployments"
          echo "deployments=$deployments" >> $GITHUB_OUTPUT
     # Step 6: Get Azure Activity Logs for App Service Deployments
@@ -129,7 +129,7 @@ jobs:
      - name: Parse Activity Logs
        id: parse_activity
        run: |
-         activities=$(jq '.' activity_logs_output.json)
+         activities=$(jq -c '.' activity_logs_output.json)
          echo "$activities"
          echo "activities=$activities" >> $GITHUB_OUTPUT
     # Step 8: Combine Change Analysis, Deployment Logs, and Activity Logs
