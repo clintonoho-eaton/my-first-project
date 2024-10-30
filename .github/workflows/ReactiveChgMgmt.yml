@@ -90,7 +90,7 @@ jobs:
        run: |
          echo "change analysis json output start..."
          echo "change analysis json output end..."
-         changes=$(jq '[.[] | {
+         changes=$(jq -c '[.[] | {
              "Change ID": .id,
              "Resource ID": .properties.resourceId,
              "Change Type": .properties.changeType,
