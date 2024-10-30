@@ -47,7 +47,7 @@ jobs:
    runs-on: ubuntu-latest
    outputs:
      ci_sys_id: ${{steps.discover_ci.outputs.ci_sys_id}}
-     combine_info: ${{steps.discover_ci.outputs.combine_info}}
+     combined_info: ${{steps.discover_ci.outputs.combined_info}}
    steps:
      - name: Set environment variables
        run: |
@@ -135,8 +135,7 @@ jobs:
        id: combine_logs
        run: |
          combined_info="Changes: ${{ steps.parse_analysis.outputs.changes }}\n\nDeployments: ${{ steps.parse_deployment.outputs.deployments }}\n\nActivities: ${{ steps.parse_activity.outputs.activities }}"
-         echo "::set-output name=combined_info::$combined_info"
-         
+         echo "combined_info=$combined_info" >> $GITHUB_OUTPUT
     # Step 8.5: Mapping Azure Resources and Versions to CIs
      - name: Map Azure Resources and App Versions to Configuration Items
        id: map_resources
