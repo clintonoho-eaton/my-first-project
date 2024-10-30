@@ -86,7 +86,6 @@ jobs:
        id: parse_analysis
        run: |
          echo "change analysis json output start..."
-         cat change_analysis_output.json
          echo "change analysis json output end..."
          changes=$(jq '[.[] | {
              "Change ID": .id,
