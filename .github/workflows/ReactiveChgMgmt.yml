@@ -115,7 +115,7 @@ jobs:
      - name: Parse Deployment Logs
        id: parse_deployment
        run: |
-         deployments=$(jq '.[] | {time: .end_time, message: .message}' deployment_logs_output.json)
+         deployments=$(jq '.' deployment_logs_output.json)
          echo "::set-output name=deployments::$deployments"
     # Step 6: Get Azure Activity Logs for App Service Deployments
      - name: Get Azure Activity Logs for App Service Deployments
@@ -126,7 +126,7 @@ jobs:
      - name: Parse Activity Logs
        id: parse_activity
        run: |
-         activities=$(jq '.[] | {time: .eventTimestamp, description: .operationName.localizedValue}' activity_logs_output.json)
+         activities=$(jq '.' activity_logs_output.json)
          echo "::set-output name=activities::$activities"
     # Step 8: Combine Change Analysis, Deployment Logs, and Activity Logs
      - name: Combine Logs and Changes
