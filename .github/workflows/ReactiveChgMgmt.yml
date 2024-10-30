@@ -136,7 +136,15 @@ jobs:
      - name: Combine Logs and Changes
        id: combine_logs
        run: |
+         # Function to escape a JSON-like string for safe embedding
+         escape_json_string() {
+           local input="$1"
+           # Replace backslashes first to avoid double escaping
+           local escaped=$(echo "$input" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e ':a;N;$!ba;s/\n/\\n/g')
+           echo "$escaped"
+         }
          combined_info='Changes: ${{ steps.parse_analysis.outputs.changes }}\n\nDeployments: ${{ steps.parse_deployment.outputs.deployments }}\n\nActivities: ${{ steps.parse_activity.outputs.activities }}'
+         combined_info=$(escape_json_string "$combined_info")
          echo "combined_info='$combined_info'" >> $GITHUB_OUTPUT
     # Step 8.5: Mapping Azure Resources and Versions to CIs
      - name: Map Azure Resources and App Versions to Configuration Items
