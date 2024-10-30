@@ -279,7 +279,7 @@ jobs:
          # Construct JSON payload with jq
          json_payload=$(jq -n \
            --arg short_description "Deploy service to AKS" \
-           --arg description "$DESCRIPTION" \
+           --arg description $DESCRIPTION \
            --arg category "Software" \
            --arg type "standard" \
            --arg chg_model "$chg_model_tmp" \
