@@ -1,0 +1,385 @@
+name: Proactive Change Management
+on:
+  workflow_dispatch:
+    inputs:
+      azure_client_id:
+        description: 'Azure Client ID'
+        required: true
+      azure_client_secret:
+        description: 'Azure Client Secret'
+        required: true
+        type: string
+      azure_tenant_id:
+        description: 'Azure Tenant ID'
+        required: true
+        type: string
+      azure_subscription_id:
+        description: 'Azure Subscription ID'
+        required: true
+        type: string
+      servicenow_instance:
+        description: 'ServiceNow instance'
+        required: true
+        type: string
+      change_model:
+        description: 'Change model sys_id'
+        required: true
+        type: string
+      std_chg_prod_ver:
+        description: 'standard change producer version'
+        required: true
+        type: string
+      assign_group:
+        description: 'ServiceNow assignment group'
+        required: true
+        type: string
+      start_time:
+        description: 'start time for change analysis (format: HH:MM:SS)'
+        required: true
+        type: string
+      end_time:
+        description: 'end time for change analysis (format: HH:MM:SS)'
+        required: true
+        type: string
+
+jobs:
+ build:
+   runs-on: ubuntu-latest
+   steps:
+     - name: Set environment variables
+       run: |
+         echo "MICROSERVICE_NAME=${{ github.event.inputs.microservice_name }}" >> $GITHUB_ENV
+     # Step 1: Checkout the repository
+     - name: Checkout repository
+       uses: actions/checkout@v2
+
+     # Step 2: Log in to GitHub Container Registry (ghcr.io)
+     - name: Log in to GitHub Container Registry
+       uses: docker/login-action@v2
+       with:
+         registry: ghcr.io
+         username: ${{ github.actor }}
+         password: ${{ secrets.GITHUB_TOKEN }}
+
+     # Step 3: Extract parent folder name (microservice name)
+     - name: Get microservice name (parent folder name)
+       id: get_service_name
+       run: echo "::set-output name=service_name::$(basename $(pwd))"
+
+     - name: directory content
+       run: |
+         ls -lart
+
+     # Step 4: Build the Docker image using the microservice name as tag
+     - name: Build Docker image
+       run: |
+         docker build -t ghcr.io/${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }} WeatherForecastApi/.
+
+     # Step 5: Push the Docker image to GitHub Packages
+     - name: Push Docker image
+       run: |
+         docker push ghcr.io/${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }}
+
+ azure-change-analysis:
+   runs-on: ubuntu-latest
+   steps:
+     - name: Set environment variables
+       run: |
+         echo "AZURE_CLIENT_ID=${{ github.event.inputs.azure_client_id }}" >> $GITHUB_ENV
+         echo "AZURE_CLIENT_SECRET=${{ github.event.inputs.azure_client_secret }}" >> $GITHUB_ENV
+         echo "AZURE_TENANT_ID=${{ github.event.inputs.azure_tenant_id }}" >> $GITHUB_ENV
+         echo "AZURE_SUBSCRIPTION_ID=${{ github.event.inputs.azure_subscription_id }}" >> $GITHUB_ENV
+         echo "SERVICENOW_INSTANCE=${{ github.event.inputs.servicenow_instance }}" >> $GITHUB_ENV
+         echo "CHANGE_MODEL=${{github.event.inputs.change_model}}" >> $GITHUB_ENV
+         echo "STD_CHG_PROD_VER=${{github.event.inputs.std_chg_prod_ver}}" >> $GITHUB_ENV
+         echo "ASSIGNMENT_GROUP=${{github.event.inputs.assign_group}}" >> $GITHUB_ENV
+         echo "START_TIME=${{github.event.inputs.start_time}}" >> $GITHUB_ENV
+         echo "END_TIME=${{github.event.inputs.end_time}}" >> $GITHUB_ENV
+     
+     - name: Set up Azure CLI
+       uses: azure/login@v1
+       with:
+          creds: >
+           {
+             "clientId": "${{ env.AZURE_CLIENT_ID }}",
+             "clientSecret": "${{ env.AZURE_CLIENT_SECRET }}",
+             "tenantId": "${{ env.AZURE_TENANT_ID }}",
+             "subscriptionId": "${{ env.AZURE_SUBSCRIPTION_ID }}"
+           }
+           
+     # Step 1: Checkout the repository
+     - name: Checkout repository
+       uses: actions/checkout@v3
+
+     # Step 2: Get Change Analysis from Azure Monitor for the entire subscription
+     - name: Get Change Analysis for Subscription
+       id: change_analysis
+       run: |
+         az monitor change-analysis resource-changes list-subscription \
+           --subscription ${{ env.AZURE_SUBSCRIPTION_ID }} \
+           --start-time ${{ env.START_TIME }} \
+           --end-time ${{ env.END_TIME }} > change_analysis_output.json
+     # Step 3: Parse the change analysis response to extract changes
+     - name: Parse Change Analysis
+       id: parse_analysis
+       run: |
+         changes=$(jq '.changes' change_analysis_output.json)
+         echo "::set-output name=changes::$changes"
+    # Step 4: Get Azure App Service Deployment Logs
+     - name: Get Azure App Service Deployment Logs
+       id: deployment_logs
+       run: |
+         echo "capture deployment logs" > deployment_logs_output.json
+    # Step 5: Parse Deployment Logs
+     - name: Parse Deployment Logs
+       id: parse_deployment
+       run: |
+         deployments=$(jq '.[] | {time: .end_time, message: .message}' deployment_logs_output.json)
+         echo "::set-output name=deployments::$deployments"
+    # Step 6: Get Azure Activity Logs for App Service Deployments
+     - name: Get Azure Activity Logs for App Service Deployments
+       id: activity_logs
+       run: |
+         echo "capture activity logs" > activity_logs_output.json
+    # Step 7: Parse Activity Logs
+     - name: Parse Activity Logs
+       id: parse_activity
+       run: |
+         activities=$(jq '.[] | {time: .eventTimestamp, description: .operationName.localizedValue}' activity_logs_output.json)
+         echo "::set-output name=activities::$activities"
+    # Step 8: Combine Change Analysis, Deployment Logs, and Activity Logs
+     - name: Combine Logs and Changes
+       id: combine_logs
+       run: |
+         combined_info="Changes: ${{ steps.parse_analysis.outputs.changes }}\n\nDeployments: ${{ steps.parse_deployment.outputs.deployments }}\n\nActivities: ${{ steps.parse_activity.outputs.activities }}"
+         echo "::set-output name=combined_info::$combined_info"
+         
+    # Step 8.5: Mapping Azure Resources and Versions to CIs
+     - name: Map Azure Resources and App Versions to Configuration Items
+       id: map_resources
+       run: |
+         # resource_version=$(jq -r '.version' deployment_logs_output.json)
+         echo "Mapping Azure resources to ServiceNow configuration items..."
+         # define a mapping logic ( conditionals or a mapping file)
+         # For example, based on the resource name, version, or some other metadata:
+         # ci_name="AppService-${{ secrets.APP_SERVICE_NAME }}-Version-${resource_version}"
+         # Set the dynamically mapped CI name for the next steps
+         # ci_name = "service_ver"
+         # ci_sys_id="8694d785c3a11210b55f1933e4013147"
+         ci_name="saasops-changemgmt"
+         echo "::set-output name=mapped_ci_name::$ci_name" 
+   
+     # Step 1: Discover or Create Microservice CI in ServiceNow using the service name
+     - name: Discover or Create CI for Microservice in ServiceNow
+       id: discover_ci
+       run: |
+         # Define the ServiceNow instance and authentication
+         SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+         SN_USER="${{ env.SERVICENOW_USER }}"
+         SN_PASS="${{ env.SERVICENOW_PASSWORD }}"
+         SERVICE_NAME="${{ steps.map_resources.outputs.mapped_ci_name }}"
+         # Encode username and password for Basic Auth
+         auth_header=$(echo -n "${{ env.SERVICENOW-USER }}:${{ env.SERVICENOW-PASSWORD }}" | base64)
+
+         # Discover the CI in ServiceNow
+         echo "Attempting to discover CI with name: $SERVICE_NAME"
+         ci_response=$(curl -s -X GET \
+           "https://$SN_INSTANCE/api/now/table/cmdb_ci?sysparm_query=name=$SERVICE_NAME" \
+           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           --header "Accept: application/json")
+
+         # Extract sys_id and name if the CI exists
+         ci_sys_id=$(echo $ci_response | jq -r '.result[0].sys_id')
+         ci_name=$(echo $ci_response | jq -r '.result[0].name')
+
+         # Check if CI was found, if not, create it
+         if [ -z "$ci_sys_id" ] || [ "$ci_sys_id" == "null" ]; then
+           echo "CI not found. Creating a new CI for $SERVICE_NAME..."
+           # Create the CI if it doesn't exist
+           create_ci_response=$(curl -s -X POST \
+             "https://$SN_INSTANCE/api/now/table/cmdb_ci" \
+             --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+             --header "Content-Type: application/json" \
+             --data '{
+               "name": "'"$SERVICE_NAME"'",
+               "category": "Application Service",
+               "location": "AKS Cluster",
+               "app_service_name": "'"$SERVICE_NAME"'"
+             }')
+
+           # Extract the sys_id and name of the newly created CI
+           ci_sys_id=$(echo $create_ci_response | jq -r '.result.sys_id')
+           ci_name=$(echo $create_ci_response | jq -r '.result.name')
+           if [ "$ci_sys_id" == "null" ] || [ -z "$ci_sys_id" ]; then
+             echo "Error: Failed to create CI for $SERVICE_NAME. Response: $create_ci_response"
+             exit 1
+           else
+             echo "Successfully created CI: $ci_name with sys_id: $ci_sys_id"
+           fi
+         else
+           echo "CI found: $ci_name with sys_id: $ci_sys_id"
+         fi
+
+         # Set the output for the discovered or created CI
+         echo "ci_sys_id=$ci_sys_id" >> $GITHUB_OUTPUT
+         echo "ci_name=$ci_name" >> $GITHUB_OUTPUT
+
+     - name: Print CMDB Item
+       run: |
+         echo "CMDB Item: ${{ steps.discover_ci.outputs.ci_name }} (sys_id: ${{ steps.discover_ci.outputs.ci_sys_id }})"
+
+ change-request:
+   runs-on: ubuntu-latest
+   needs: azure-change-analysis
+   outputs:
+     change_number: ${{steps.create_change.outputs.change_number}}
+     change_sys_id: ${{steps.create_change.outputs.change_sys_id}}
+
+   steps:
+     - name: Set environment variables
+       run: |
+         echo "SERVICENOW_INSTANCE=${{ github.event.inputs.servicenow_instance }}" >> $GITHUB_ENV
+         echo "CHANGE_MODEL=${{github.event.inputs.change_model}}" >> $GITHUB_ENV
+         echo "STD_CHG_PROD_VER=${{github.event.inputs.std_chg_prod_ver}}" >> $GITHUB_ENV
+         echo "ASSIGNMENT_GROUP=${{github.event.inputs.assign_group}}" >> $GITHUB_ENV
+
+
+     # Step 1: Retrieve First Member of Assignment Group
+     - name: Get First Member of Assignment Group
+       id: get_assigned_to
+       run: |
+         SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+         ASSIGNMENT_GROUP="${{ env.ASSIGNMENT_GROUP }}"  # replace with actual assignment group sys_id
+         echo "Fetching first member of assignment group $ASSIGNMENT_GROUP..."
+         
+         # Query ServiceNow for users in the assignment group
+         group_members=$(curl -s -X GET \
+           "https://$SN_INSTANCE/api/now/table/sys_user_grmember?sysparm_query=group=$ASSIGNMENT_GROUP" \
+           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           --header "Content-Type: application/json")
+
+         # Extract the sys_id of the first member
+         assigned_to=$(echo $group_members | jq -r '.result[0].user.value')
+         if [ -z "$assigned_to" ] || [ "$assigned_to" == "null" ]; then
+           echo "Error: No members found in the assignment group."
+           exit 1
+         else
+           echo "Assigned to user sys_id: $assigned_to"
+           echo "::set-output name=assigned_to::$assigned_to"
+         fi
+
+     # Step 2: Create standard change request based on existing change template for brightlayer.
+     - name: Create Standard Change Request in ServiceNow
+       id: create_change
+       run: |
+         SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+         CMDB_CI="${{ needs.azure-change-analysis.outputs.ci_sys_id }}"
+         chg_model_tmp="${{env.CHANGE_MODEL}}"
+         std_chg_ver="${{env.STD_CHG_PROD_VER}}"
+
+         # Get current date and time in YYYY-MM-DD HH:MM:SS format
+         PLANNED_START=$(date +"%Y-%m-%d %H:%M:%S")
+         PLANNED_END=$(date -d "$PLANNED_START + 1 hour" +"%Y-%m-%d %H:%M:%S")
+         ASSIGNED_TO="${{ steps.get_assigned_to.outputs.assigned_to }}"
+         DESCRIPTION="${{ steps.combine_logs.outputs.combined_info }}"
+         echo "Creating a change request with CI sys_id: $CMDB_CI..."
+
+         # Construct JSON payload with jq
+         json_payload=$(jq -n \
+           --arg short_description "Deploy service to AKS" \
+           --arg description "$DESCRIPTION" \
+           --arg category "Software" \
+           --arg type "standard" \
+           --arg chg_model "$chg_model_tmp" \
+           --arg std_change_producer_version "$std_chg_ver" \
+           --arg cmdb_ci "$CMDB_CI" \
+           --arg planned_start "$PLANNED_START" \
+           --arg planned_end "$PLANNED_END" \
+           --arg assigned_to "$ASSIGNED_TO" \
+           '{
+             short_description: $short_description,
+             description: $description,
+             category: $category,
+             type: $type,
+             chg_model: $chg_model,
+             std_change_producer_version: $std_change_producer_version,
+             cmdb_ci: $cmdb_ci,
+             planned_start_date: $planned_start,
+             planned_end_date: $planned_end,
+             assigned_to: $assigned_to
+           }')
+
+         # Make the API call
+         change_request=$(curl -s -X POST \
+           "https://$SN_INSTANCE/api/now/table/change_request" \
+           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           --header "Content-Type: application/json" \
+           --data "$json_payload")
+
+         # Extract and print the change request number for debugging
+         change_number=$(echo $change_request | jq -r '.result.number')
+         change_sys_id=$(echo $change_request | jq -r '.result.sys_id')
+         if [ "$change_number" == "null" ] || [ -z "$change_number" ]; then
+           echo "Error: Failed to create change request. Response: $change_request"
+           exit 1
+         else
+           echo "Successfully created change request: $change_number"
+           echo "change_number=$change_number" >> $GITHUB_OUTPUT
+           echo "change_sys_id=$change_sys_id" >> $GITHUB_OUTPUT
+         fi
+
+     # Step 3: Move to Scheduled State
+     - name: Move Change Request to Scheduled
+       run: |
+         SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+         CHANGE_SYS_ID="${{ steps.create_change.outputs.change_sys_id }}"
+         ASSIGNMENT_GRP="${{ env.ASSIGNMENT_GROUP }}"
+         PLANNED_START=$(date +"%Y-%m-%d %H:%M:%S")
+         PLANNED_END=$(date +"%Y-%m-%d %H:%M:%S")
+         echo "Moving the change request $CHANGE_SYS_ID to Scheduled state..."
+
+         # Construct JSON payload with jq
+         json_payload=$(jq -n \
+           --arg state "Scheduled" \
+           --arg planned_start "$PLANNED_START" \
+           --arg planned_end "$PLANNED_END" \
+           --arg assignment_group "$ASSIGNMENT_GRP" \
+           '{
+             state: $state,
+             planned_start_date: $planned_start,
+             planned_end_date: $planned_end,
+             assignment_group: $assignment_group
+           }')
+         
+         curl -s -X PATCH \
+           "https://$SN_INSTANCE/api/now/table/change_request/$CHANGE_SYS_ID" \
+           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           --header "Content-Type: application/json" \
+           --data "$json_payload"
+
+
+     # Step 4: Move to Implement State
+     - name: Move Change Request to Implement
+       run: |
+         SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+         CHANGE_SYS_ID="${{ steps.create_change.outputs.change_sys_id }}"
+         echo "Moving the change request $CHANGE_SYS_ID to Implement state..."
+         # Corrected JSON payload with commas between key-value pairs
+          json_payload=$(jq -n \
+           --arg state "Implement" \
+           '{
+             state: $state,
+           }')
+         
+         curl -s -X PATCH \
+           "https://$SN_INSTANCE/api/now/table/change_request/$CHANGE_SYS_ID" \
+           --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+           --header "Content-Type: application/json" \
+           --data "$json_payload"
+
+     # Print Change Request Number
+     - name: Print Change Request Number
+       run: |
+         echo "ServiceNow Change Request: ${{ steps.create_change.outputs.change_number }} (sys_id: ${{steps.create_change.outputs.change_sys_id }})"
+
+ 
