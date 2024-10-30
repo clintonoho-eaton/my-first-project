@@ -137,7 +137,7 @@ jobs:
        id: combine_logs
        run: |
          combined_info="Changes: ${{ steps.parse_analysis.outputs.changes }}\n\nDeployments: ${{ steps.parse_deployment.outputs.deployments }}\n\nActivities: ${{ steps.parse_activity.outputs.activities }}"
-         echo "combined_info=$combined_info" >> $GITHUB_OUTPUT
+         echo "combined_info='$combined_info'" >> $GITHUB_OUTPUT
     # Step 8.5: Mapping Azure Resources and Versions to CIs
      - name: Map Azure Resources and App Versions to Configuration Items
        id: map_resources
