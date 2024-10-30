@@ -372,11 +372,11 @@ jobs:
            --data "$json_payload"
            
      # Step 5: Move to Review State
-     - name: Move Change Request to Implement
+     - name: Move Change Request to Review
        run: |
          SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
          CHANGE_SYS_ID="${{ steps.create_change.outputs.change_sys_id }}"
-         echo "Moving the change request $CHANGE_SYS_ID to Implement state..."
+         echo "Moving the change request $CHANGE_SYS_ID to Review state..."
          # Corrected JSON payload with commas between key-value pairs
           json_payload=$(jq -n \
            --arg state "Review" \
