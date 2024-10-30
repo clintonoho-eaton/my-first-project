@@ -78,14 +78,16 @@ jobs:
      - name: Get Change Analysis for Subscription
        id: change_analysis
        run: |
-         az monitor change-analysis resource-changes list-subscription \
-           --subscription ${{ env.AZURE_SUBSCRIPTION_ID }} \
+         az change-analysis list \
            --start-time ${{ env.START_TIME }} \
            --end-time ${{ env.END_TIME }} > change_analysis_output.json
      # Step 3: Parse the change analysis response to extract changes
      - name: Parse Change Analysis
        id: parse_analysis
        run: |
+         echo "change analysis json output start..."
+         cat change_analysis_output.json
+         echo "change analysis json output end..."
          changes=$(jq '.changes' change_analysis_output.json)
          echo "::set-output name=changes::$changes"
     # Step 4: Get Azure App Service Deployment Logs
