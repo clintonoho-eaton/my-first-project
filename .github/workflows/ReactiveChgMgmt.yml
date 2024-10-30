@@ -110,7 +110,7 @@ jobs:
      - name: Get Azure App Service Deployment Logs
        id: deployment_logs
        run: |
-         echo "capture deployment logs" > deployment_logs_output.json
+         echo '{"deployments": [{"id": "deployment-123", "status": "InProgress", "timestamp": "2024-10-30T08:46:45Z", "details": "Sample deployment log"}]}' > deployment_logs_output.json
     # Step 5: Parse Deployment Logs
      - name: Parse Deployment Logs
        id: parse_deployment
@@ -121,7 +121,7 @@ jobs:
      - name: Get Azure Activity Logs for App Service Deployments
        id: activity_logs
        run: |
-         echo "capture activity logs" > activity_logs_output.json
+         echo '{"activityLogs": [{"eventId": "event-456", "operationName": "Create Resource", "status": "Succeeded", "timestamp": "2024-10-30T09:15:30Z", "resourceId": "/subscriptions/xxxx/resourceGroups/example-rg/providers/Microsoft.Web/sites/example-app", "description": "Sample activity log entry"}]}' > activity_logs_output.json
     # Step 7: Parse Activity Logs
      - name: Parse Activity Logs
        id: parse_activity
