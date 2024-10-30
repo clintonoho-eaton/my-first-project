@@ -47,7 +47,7 @@ jobs:
    runs-on: ubuntu-latest
    outputs:
      ci_sys_id: ${{steps.discover_ci.outputs.ci_sys_id}}
-     combined_info: ${{steps.discover_ci.outputs.combined_info}}
+     combined_info: ${{steps.combine_logs.outputs.combined_info}}
    steps:
      - name: Set environment variables
        run: |
@@ -106,7 +106,7 @@ jobs:
                  }
              ]
           }]' change_analysis_output.json)
-
+         echo  "$changes"
          echo "::set-output name=changes::$changes"
     # Step 4: Get Azure App Service Deployment Logs
      - name: Get Azure App Service Deployment Logs
@@ -118,7 +118,8 @@ jobs:
        id: parse_deployment
        run: |
          deployments=$(jq '.' deployment_logs_output.json)
-         echo "::set-output name=deployments::$deployments"
+         echo "$deployments"
+         echo "deployments=$deployments" >> $GITHUB_OUTPUT
     # Step 6: Get Azure Activity Logs for App Service Deployments
      - name: Get Azure Activity Logs for App Service Deployments
        id: activity_logs
@@ -129,7 +130,8 @@ jobs:
        id: parse_activity
        run: |
          activities=$(jq '.' activity_logs_output.json)
-         echo "::set-output name=activities::$activities"
+         echo "$activities"
+         echo "activities=$activities" >> $GITHUB_OUTPUT
     # Step 8: Combine Change Analysis, Deployment Logs, and Activity Logs
      - name: Combine Logs and Changes
        id: combine_logs
