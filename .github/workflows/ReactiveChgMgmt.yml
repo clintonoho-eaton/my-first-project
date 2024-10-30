@@ -279,7 +279,7 @@ jobs:
          # Construct JSON payload with jq
          json_payload=$(jq -n \
            --arg short_description "Deploy service to AKS" \
-           --arg description $DESCRIPTION \
+           --arg description "$DESCRIPTION" \
            --arg category "Software" \
            --arg type "standard" \
            --arg chg_model "$chg_model_tmp" \
@@ -288,6 +288,7 @@ jobs:
            --arg planned_start "$PLANNED_START" \
            --arg planned_end "$PLANNED_END" \
            --arg assigned_to "$ASSIGNED_TO" \
+           --arg work_notes "$DESCRIPTION" \
            '{
              short_description: $short_description,
              description: $description,
@@ -298,7 +299,8 @@ jobs:
              cmdb_ci: $cmdb_ci,
              planned_start_date: $planned_start,
              planned_end_date: $planned_end,
-             assigned_to: $assigned_to
+             assigned_to: $assigned_to,
+             work_notes: $work_notes
            }')
 
          # Make the API call
