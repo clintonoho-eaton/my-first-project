@@ -45,6 +45,9 @@ on:
 jobs:
  azure-change-analysis:
    runs-on: ubuntu-latest
+   outputs:
+     ci_sys_id: ${{steps.discover_ci.outputs.ci_sys_id}}
+     combine_info: ${{steps.discover_ci.outputs.combine_info}}
    steps:
      - name: Set environment variables
        run: |
@@ -261,7 +264,7 @@ jobs:
          PLANNED_START=$(date +"%Y-%m-%d %H:%M:%S")
          PLANNED_END=$(date -d "$PLANNED_START + 1 hour" +"%Y-%m-%d %H:%M:%S")
          ASSIGNED_TO="${{ steps.get_assigned_to.outputs.assigned_to }}"
-         DESCRIPTION="${{ steps.combine_logs.outputs.combined_info }}"
+         DESCRIPTION="${{ needs.azure-change-analysis.outputs.combined_info }}"
          echo "Creating a change request with CI sys_id: $CMDB_CI..."
 
          # Construct JSON payload with jq
