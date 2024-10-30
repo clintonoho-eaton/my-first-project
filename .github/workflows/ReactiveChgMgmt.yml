@@ -43,43 +43,6 @@ on:
         type: string
 
 jobs:
- build:
-   runs-on: ubuntu-latest
-   steps:
-     - name: Set environment variables
-       run: |
-         echo "MICROSERVICE_NAME=${{ github.event.inputs.microservice_name }}" >> $GITHUB_ENV
-     # Step 1: Checkout the repository
-     - name: Checkout repository
-       uses: actions/checkout@v2
-
-     # Step 2: Log in to GitHub Container Registry (ghcr.io)
-     - name: Log in to GitHub Container Registry
-       uses: docker/login-action@v2
-       with:
-         registry: ghcr.io
-         username: ${{ github.actor }}
-         password: ${{ secrets.GITHUB_TOKEN }}
-
-     # Step 3: Extract parent folder name (microservice name)
-     - name: Get microservice name (parent folder name)
-       id: get_service_name
-       run: echo "::set-output name=service_name::$(basename $(pwd))"
-
-     - name: directory content
-       run: |
-         ls -lart
-
-     # Step 4: Build the Docker image using the microservice name as tag
-     - name: Build Docker image
-       run: |
-         docker build -t ghcr.io/${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }} WeatherForecastApi/.
-
-     # Step 5: Push the Docker image to GitHub Packages
-     - name: Push Docker image
-       run: |
-         docker push ghcr.io/${{ github.repository_owner }}/${{ steps.get_service_name.outputs.service_name }}:${{ github.sha }}
-
  azure-change-analysis:
    runs-on: ubuntu-latest
    steps:
