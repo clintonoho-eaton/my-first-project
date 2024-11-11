@@ -2,21 +2,6 @@ name: Reactive Change Management
 on:
   workflow_dispatch:
     inputs:
-      azure_client_id:
-        description: 'Azure Client ID'
-        required: true
-      azure_client_secret:
-        description: 'Azure Client Secret'
-        required: true
-        type: string
-      azure_tenant_id:
-        description: 'Azure Tenant ID'
-        required: true
-        type: string
-      azure_subscription_id:
-        description: 'Azure Subscription ID'
-        required: true
-        type: string
       servicenow_instance:
         description: 'ServiceNow instance'
         required: true
@@ -51,10 +36,6 @@ jobs:
    steps:
      - name: Set environment variables
        run: |
-         echo "AZURE_CLIENT_ID=${{ github.event.inputs.azure_client_id }}" >> $GITHUB_ENV
-         echo "AZURE_CLIENT_SECRET=${{ github.event.inputs.azure_client_secret }}" >> $GITHUB_ENV
-         echo "AZURE_TENANT_ID=${{ github.event.inputs.azure_tenant_id }}" >> $GITHUB_ENV
-         echo "AZURE_SUBSCRIPTION_ID=${{ github.event.inputs.azure_subscription_id }}" >> $GITHUB_ENV
          echo "SERVICENOW_INSTANCE=${{ github.event.inputs.servicenow_instance }}" >> $GITHUB_ENV
          echo "CHANGE_MODEL=${{github.event.inputs.change_model}}" >> $GITHUB_ENV
          echo "STD_CHG_PROD_VER=${{github.event.inputs.std_chg_prod_ver}}" >> $GITHUB_ENV
@@ -62,16 +43,10 @@ jobs:
          echo "START_TIME=${{github.event.inputs.start_time}}" >> $GITHUB_ENV
          echo "END_TIME=${{github.event.inputs.end_time}}" >> $GITHUB_ENV
      
-     - name: Set up Azure CLI
+     - name: 'Azure Login'
        uses: azure/login@v1
        with:
-          creds: >
-           {
-             "clientId": "${{ env.AZURE_CLIENT_ID }}",
-             "clientSecret": "${{ env.AZURE_CLIENT_SECRET }}",
-             "tenantId": "${{ env.AZURE_TENANT_ID }}",
-             "subscriptionId": "${{ env.AZURE_SUBSCRIPTION_ID }}"
-           }
+         creds: ${{ secrets.AZURE_CREDENTIALS }}
            
      # Step 1: Checkout the repository
      - name: Checkout repository
