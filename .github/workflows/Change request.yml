@@ -1,0 +1,164 @@
+name: Change Request Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      servicenow_instance:
+        description: 'ServiceNow instance name'
+        required: true
+      change_model:
+        description: 'Change model'
+        required: true
+      std_chg_prod_ver:
+        description: 'Standard change producer version'
+        required: true
+      assign_group:
+        description: 'Assignment group'
+        required: true
+      microservice_name:
+        description: 'Microservice name'
+        required: true
+
+jobs:
+  change-request:
+    runs-on: ubuntu-latest
+    needs: ci-management
+    outputs:
+      change_number: ${{ steps.create_change.outputs.change_number }}
+      change_sys_id: ${{ steps.create_change.outputs.change_sys_id }}
+
+    steps:
+      - name: Set environment variables
+        run: |
+          echo "SERVICENOW_INSTANCE=${{ github.event.inputs.servicenow_instance }}" >> $GITHUB_ENV
+          echo "CHANGE_MODEL=${{ github.event.inputs.change_model }}" >> $GITHUB_ENV
+          echo "STD_CHG_PROD_VER=${{ github.event.inputs.std_chg_prod_ver }}" >> $GITHUB_ENV
+          echo "ASSIGNMENT_GROUP=${{ github.event.inputs.assign_group }}" >> $GITHUB_ENV
+          echo "MICROSERVICE_NAME=${{ github.event.inputs.microservice_name }}" >> $GITHUB_ENV
+
+      - name: Get microservice name (parent folder name)
+        id: get_service_name
+        run: echo "::set-output name=service_name::$(basename $(pwd))"
+
+      - name: Get First Member of Assignment Group
+        id: get_assigned_to
+        run: |
+          SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+          ASSIGNMENT_GROUP="${{ env.ASSIGNMENT_GROUP }}"
+          echo "Fetching first member of assignment group $ASSIGNMENT_GROUP..."
+          
+          group_members=$(curl -s -X GET \
+            "https://$SN_INSTANCE/api/now/table/sys_user_grmember?sysparm_query=group=$ASSIGNMENT_GROUP" \
+            --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+            --header "Content-Type: application/json")
+
+          assigned_to=$(echo $group_members | jq -r '.result[0].user.value')
+          if [ -z "$assigned_to" ] || [ "$assigned_to" == "null" ]; then
+            echo "Error: No members found in the assignment group."
+            exit 1
+          else
+            echo "Assigned to user sys_id: $assigned_to"
+            echo "::set-output name=assigned_to::$assigned_to"
+          fi
+
+      - name: Create Standard Change Request in ServiceNow
+        id: create_change
+        run: |
+          SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+          SERVICE_NAME="${{ steps.get_service_name.outputs.service_name }}"
+          CMDB_CI="${{ needs.ci-management.outputs.ci_sys_id }}"
+          chg_model_tmp="${{ env.CHANGE_MODEL }}"
+          std_chg_ver="${{ env.STD_CHG_PROD_VER }}"
+          PLANNED_START=$(date +"%Y-%m-%d %H:%M:%S")
+          PLANNED_END=$(date -d "$PLANNED_START + 1 hour" +"%Y-%m-%d %H:%M:%S")
+          ASSIGNED_TO="${{ steps.get_assigned_to.outputs.assigned_to }}"
+
+          json_payload=$(jq -n \
+            --arg short_description "Deploy $SERVICE_NAME microservice to AKS" \
+            --arg description "Standard change for deploying $SERVICE_NAME microservice to AKS using a pre-approved change model." \
+            --arg category "Software" \
+            --arg type "standard" \
+            --arg chg_model "$chg_model_tmp" \
+            --arg std_change_producer_version "$std_chg_ver" \
+            --arg cmdb_ci "$CMDB_CI" \
+            --arg planned_start "$PLANNED_START" \
+            --arg planned_end "$PLANNED_END" \
+            --arg assigned_to "$ASSIGNED_TO" \
+            '{
+              short_description: $short_description,
+              description: $description,
+              category: $category,
+              type: $type,
+              chg_model: $chg_model,
+              std_change_producer_version: $std_change_producer_version,
+              cmdb_ci: $cmdb_ci,
+              planned_start_date: $planned_start,
+              planned_end_date: $planned_end,
+              assigned_to: $assigned_to
+            }')
+
+          change_request=$(curl -s -X POST \
+            "https://$SN_INSTANCE/api/now/table/change_request" \
+            --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+            --header "Content-Type: application/json" \
+            --data "$json_payload")
+
+          change_number=$(echo $change_request | jq -r '.result.number')
+          change_sys_id=$(echo $change_request | jq -r '.result.sys_id')
+          if [ "$change_number" == "null" ] || [ -z "$change_number" ]; then
+            echo "Error: Failed to create change request. Response: $change_request"
+            exit 1
+          else
+            echo "Successfully created change request: $change_number"
+            echo "change_number=$change_number" >> $GITHUB_OUTPUT
+            echo "change_sys_id=$change_sys_id" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Move Change Request to Scheduled
+        run: |
+          SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+          CHANGE_SYS_ID="${{ steps.create_change.outputs.change_sys_id }}"
+          ASSIGNMENT_GRP="${{ env.ASSIGNMENT_GROUP }}"
+          PLANNED_START=$(date +"%Y-%m-%d %H:%M:%S")
+          PLANNED_END=$(date +"%Y-%m-%d %H:%M:%S")
+          echo "Moving the change request $CHANGE_SYS_ID to Scheduled state..."
+
+          json_payload=$(jq -n \
+            --arg state "Scheduled" \
+            --arg planned_start "$PLANNED_START" \
+            --arg planned_end "$PLANNED_END" \
+            --arg assignment_group "$ASSIGNMENT_GRP" \
+            '{
+              state: $state,
+              planned_start_date: $planned_start,
+              planned_end_date: $planned_end,
+              assignment_group: $assignment_group
+            }')
+          
+          curl -s -X PATCH \
+            "https://$SN_INSTANCE/api/now/table/change_request/$CHANGE_SYS_ID" \
+            --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+            --header "Content-Type: application/json" \
+            --data "$json_payload"
+
+      - name: Move Change Request to Implement
+        run: |
+          SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+          CHANGE_SYS_ID="${{ steps.create_change.outputs.change_sys_id }}"
+          echo "Moving the change request $CHANGE_SYS_ID to Implement state..."
+
+          json_payload=$(jq -n \
+            --arg state "Implement" \
+            '{
+              state: $state
+            }')
+          
+          curl -s -X PATCH \
+            "https://$SN_INSTANCE/api/now/table/change_request/$CHANGE_SYS_ID" \
+            --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }} \
+            --header "Content-Type: application/json" \
+            --data "$json_payload"
+
+      - name: Print Change Request Number
+        run: |
+          echo "ServiceNow Change Request: ${{ steps.create_change.outputs.change_number }} (sys_id: ${{ steps.create_change.outputs.change_sys_id }})"
