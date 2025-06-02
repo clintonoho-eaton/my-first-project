@@ -1,4 +1,21 @@
-      - name: Create Normal Change Request in ServiceNow (workaround)
+name: Change Request Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      servicenow_instance:
+        description: 'ServiceNow instance name'
+        required: true
+      change_model:
+        description: 'Change model'
+        required: true
+      assign_group:
+        description: 'Assignment group'
+        required: true
+      microservice_name:
+        description: 'Microservice name'
+        required: true
+jobs:
         id: create_change
         run: |
           SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
