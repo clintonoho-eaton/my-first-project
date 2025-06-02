@@ -1,10 +1,10 @@
-name: Change Request Workflow
+name: Change Request Workflow (Working)
 
 on:
   workflow_dispatch:
     inputs:
       servicenow_instance:
-        default: dev32945
+        default: dev329451
         description: 'ServiceNow instance name'
         required: true
       change_model:
