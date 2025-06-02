@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       servicenow_instance:
+        default: dev32945
         description: 'ServiceNow instance name'
         required: true
       change_model:
