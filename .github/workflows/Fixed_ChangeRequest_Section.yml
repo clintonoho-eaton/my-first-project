@@ -50,7 +50,8 @@ jobs:
             }')
 
           change_request=$(curl -s -X POST             "https://$SN_INSTANCE/api/now/table/change_request"             --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }}             --header "Content-Type: application/json"             --data "$json_payload")
-
+          echo "Response from ServiceNow"
+          echo "$change_request"
           change_number=$(echo $change_request | jq -r '.result.number')
           change_sys_id=$(echo $change_request | jq -r '.result.sys_id')
 
