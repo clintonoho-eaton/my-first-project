@@ -1,0 +1,38 @@
+      - name: Create Normal Change Request in ServiceNow (workaround)
+        id: create_change
+        run: |
+          SN_INSTANCE="${{ env.SERVICENOW_INSTANCE }}.service-now.com"
+          SERVICE_NAME="${{ steps.get_service_name.outputs.service_name }}"
+          CMDB_CI="dummy_ci_sys_id"  # You can update this once CI discovery works
+          chg_model_tmp="${{ env.CHANGE_MODEL }}"
+          PLANNED_START=$(date +"%Y-%m-%d %H:%M:%S")
+          PLANNED_END=$(date -d "$PLANNED_START + 1 hour" +"%Y-%m-%d %H:%M:%S")
+          ASSIGNED_TO="${{ steps.get_assigned_to.outputs.assigned_to }}"
+
+          echo "Creating a normal change request for $SERVICE_NAME..."
+
+          json_payload=$(jq -n             --arg short_description "Deploy $SERVICE_NAME microservice to AKS"             --arg description "Normal change for deploying $SERVICE_NAME microservice to AKS."             --arg category "Software"             --arg type "normal"             --arg chg_model "$chg_model_tmp"             --arg cmdb_ci "$CMDB_CI"             --arg planned_start "$PLANNED_START"             --arg planned_end "$PLANNED_END"             --arg assigned_to "$ASSIGNED_TO"             '{
+              short_description: $short_description,
+              description: $description,
+              category: $category,
+              type: $type,
+              chg_model: $chg_model,
+              cmdb_ci: $cmdb_ci,
+              planned_start_date: $planned_start,
+              planned_end_date: $planned_end,
+              assigned_to: $assigned_to
+            }')
+
+          change_request=$(curl -s -X POST             "https://$SN_INSTANCE/api/now/table/change_request"             --user ${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }}             --header "Content-Type: application/json"             --data "$json_payload")
+
+          change_number=$(echo $change_request | jq -r '.result.number')
+          change_sys_id=$(echo $change_request | jq -r '.result.sys_id')
+
+          if [ "$change_number" == "null" ] || [ -z "$change_number" ]; then
+            echo "Error: Failed to create change request. Response: $change_request"
+            exit 1
+          else
+            echo "Successfully created change request: $change_number"
+            echo "change_number=$change_number" >> $GITHUB_OUTPUT
+            echo "change_sys_id=$change_sys_id" >> $GITHUB_OUTPUT
+          fi
