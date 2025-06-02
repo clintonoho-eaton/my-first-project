@@ -1,0 +1,73 @@
+name: Create Change and Link Scrum Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      servicenow_instance:
+        description: 'ServiceNow instance name (e.g., dev329451)'
+        required: true
+      change_model:
+        description: 'Change model sys_id'
+        required: true
+      assign_group:
+        description: 'Assignment group sys_id'
+        required: true
+      microservice_name:
+        description: 'Microservice name'
+        required: true
+
+jobs:
+  change-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set variables
+        run: |
+          echo "SN_INSTANCE=${{ github.event.inputs.servicenow_instance }}.service-now.com" >> $GITHUB_ENV
+          echo "CHANGE_MODEL=${{ github.event.inputs.change_model }}" >> $GITHUB_ENV
+          echo "ASSIGN_GROUP=${{ github.event.inputs.assign_group }}" >> $GITHUB_ENV
+          echo "SERVICE_NAME=${{ github.event.inputs.microservice_name }}" >> $GITHUB_ENV
+
+      - name: Create change request
+        id: create_change
+        run: |
+          START_DATE=$(date +"%Y-%m-%d %H:%M:%S")
+          END_DATE=$(date -d "$START_DATE + 1 hour" +"%Y-%m-%d %H:%M:%S")
+
+          change_payload=$(jq -n             --arg sd "Change for $SERVICE_NAME"             --arg desc "Created via GitHub"             --arg type "normal"             --arg cat "Software"             --arg model "$CHANGE_MODEL"             --arg group "$ASSIGN_GROUP"             --arg start "$START_DATE"             --arg end "$END_DATE"             '{
+              short_description: $sd,
+              description: $desc,
+              type: $type,
+              category: $cat,
+              chg_model: $model,
+              assignment_group: $group,
+              planned_start_date: $start,
+              planned_end_date: $end
+            }')
+
+          response=$(curl -s -X POST "https://$SN_INSTANCE/api/now/table/change_request"             --user "${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }}"             --header "Content-Type: application/json"             --data "$change_payload")
+
+          echo "$response"
+          echo "CHANGE_SYS_ID=$(echo $response | jq -r '.result.sys_id')" >> $GITHUB_ENV
+
+      - name: Create scrum release
+        id: create_release
+        run: |
+          RELEASE_NAME="Scrum Release for $SERVICE_NAME"
+
+          release_payload=$(jq -n             --arg name "$RELEASE_NAME"             --arg desc "Created from GitHub Actions"             --arg start "$(date +"%Y-%m-%d %H:%M:%S")"             --arg end "$(date -d "+3 days" +"%Y-%m-%d %H:%M:%S")"             '{
+              name: $name,
+              description: $desc,
+              start_date: $start,
+              end_date: $end
+            }')
+
+          release_response=$(curl -s -X POST "https://$SN_INSTANCE/api/now/table/rm_release_scrum"             --user "${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }}"             --header "Content-Type: application/json"             --data "$release_payload")
+
+          echo "$release_response"
+          echo "RELEASE_SYS_ID=$(echo $release_response | jq -r '.result.sys_id')" >> $GITHUB_ENV
+
+      - name: Link scrum release to change
+        run: |
+          link_payload=$(jq -n --arg release "$RELEASE_SYS_ID" '{ "release": $release }')
+
+          curl -s -X PATCH "https://$SN_INSTANCE/api/now/table/change_request/$CHANGE_SYS_ID"             --user "${{ secrets.SERVICENOW_USER }}:${{ secrets.SERVICENOW_PASSWORD }}"             --header "Content-Type: application/json"             --data "$link_payload"
